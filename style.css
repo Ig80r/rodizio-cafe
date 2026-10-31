@@ -163,3 +163,5 @@ body[data-page=cafe] .intro h1{font-size:clamp(42px,5vw,66px);line-height:1.08;t
 .person>.role-badge{margin:10px 5px 0 0}#my-author-badge{display:flex;flex-wrap:wrap;gap:8px}.person-label{flex-wrap:wrap}.person-label .role-badge{margin-left:3px;font-size:9px}
 #post-publisher .admin-badge{background:#e8d2a3;color:#65451d;border-color:#a37e40}#post-publisher .author-badge{background:#d1dfc5;color:#315d4e;border-color:#779984}
 @media(max-width:750px){.role-badge{padding:3px 6px;font-size:9px}.role-badge img{width:18px;height:20px}#post-publisher{flex-wrap:wrap}}
+
+.support-footer{border:1px solid #72584d;background:#2c242a;padding:22px;margin-bottom:24px}.support-footer .eyebrow{font-size:9px;color:#d4b37b}.support-footer p{font-size:14px;line-height:1.6;color:#e8d8bf;margin:12px 0}.support-footer #support-contact{font-size:12px;line-height:1.6;color:#bdb2a6;display:block}.support-phone{display:inline-block;color:#f0cd8d;font-size:16px;font-weight:700;text-underline-offset:4px;padding:8px 12px}.support-phone:hover{color:#fff0cf}.support-footer .eyebrow{display:block;line-height:1.6}

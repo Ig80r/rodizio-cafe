@@ -1,4 +1,4 @@
-import {config} from './config.js';
+import {config} from './config.js?v=20261108';
 import {formatArticle,applyArticleStyle} from './formatting.js';
 const $=s=>document.querySelector(s);
 const isGazette=document.body.dataset.page==='gazeta';let returnToComments=false;
@@ -280,3 +280,6 @@ for(const button of document.querySelectorAll('[data-format]'))button.onclick=()
  if(input.value.length-(end-start)+value.length>input.maxLength){$('#post-status').textContent='A matéria atingiu o limite de caracteres.';return;}
  input.setRangeText(value,start,end,'end');input.focus();if(!selected)input.setSelectionRange(start+innerStart,start+innerStart+(mode==='link'?'Texto do link'.length:mode==='unordered'||mode==='ordered'?'Item da lista'.length:'Seu texto'.length));input.dispatchEvent(new Event('input',{bubbles:true}));
 };
+
+const supportPhone=String(config.supportPhone||'').trim(),supportDigits=supportPhone.replace(/\D/g,'');
+if(supportDigits.length>=10&&supportDigits.length<=15){const link=el('a',supportPhone,'support-phone');link.href='tel:'+(supportPhone.startsWith('+')?'+':'')+supportDigits;link.setAttribute('aria-label','Ligar para o suporte: '+supportPhone);$('#support-contact').replaceChildren(link);}

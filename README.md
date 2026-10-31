@@ -127,3 +127,9 @@ Execute `supabase/010_public_badges.sql` após a 008/009 e publique os arquivos 
 O próprio perfil, os perfis do painel administrativo, a fila pública, os comentários e a identificação de quem publicou a matéria mostram as funções. Uma conta com os dois papéis exibe ambas. Os papéis vêm de `coffee_private.admins` e `coffee_private.authors`, consultados no servidor; a migração só adiciona indicadores booleanos, sem conceder privilégios e sem expor e-mail ou ID de conta nas respostas públicas. As permissões de publicação/exclusão permanecem as da 008.
 
 Testes com API simulada verificam ADMIN no perfil, comentário e matéria; AUTOR no perfil; e a manutenção dos fluxos de concessão, revogação e exclusão própria. A atualização SQL precisa ser aplicada e validada no Supabase real.
+
+## Senha e contato de suporte
+
+O cadastro exige mínimo de 8 caracteres. No painel Supabase, confira também Authentication → Sign In / Providers → Email → Minimum password length: ajuste para 8 caso o servidor ainda exija 12. A mudança visual não altera a configuração do Supabase.
+
+Para publicar seu telefone no rodapé, preencha `supportPhone` em `config.js` (inclua DDD). O site mostra o número com link `tel:`. Enquanto estiver vazio, mostra um aviso de contato em breve, sem telefone fictício clicável. O telefone será público nas duas páginas. Não é necessário executar SQL.
