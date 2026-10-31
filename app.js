@@ -77,10 +77,10 @@ function renderAccount(){
  authView();$('#member').hidden=!token;
  $('#gazette-editor').hidden=!canWrite();$('#my-publications').hidden=!canWrite();
  if(!account)return;
- const profile=account.profile;$('#my-author-badge').hidden=!(profile?.is_author||data?.admin);$('#my-author-badge').replaceChildren();appendRoleBadges($('#my-author-badge'),{is_author:profile?.is_author,is_admin:data?.admin});renderAuthorProfiles();profilePhoto=profile?.photo||null;renderPhotoPreview();
+ const profile=account.profile;$('#my-author-badge').hidden=!(profile?.is_author||data?.admin);$('#my-author-badge').replaceChildren();appendRoleBadges($('#my-author-badge'),{is_author:profile?.is_author,is_admin:data?.admin});renderAuthorProfiles();renderCommentApprovals();profilePhoto=profile?.photo||null;renderPhotoPreview();
  $('#profile').elements.nickname.value=profile?.name||'';
  $('#profile').elements.icon.value=profile?.icon||'🦊';
- $('#member-status').textContent=profile?.participant_id?'Perfil aprovado! Você já pode enviar compras.':'Salve seu perfil e aguarde o administrador vincular sua conta a uma vaga.';
+ $('#member-status').textContent=(profile?.participant_id?'Rodízio: você já pode enviar compras. ':'Rodízio: aguardando vínculo a uma vaga. ')+(mayComment()?'Gazeta: comentários autorizados.':'Gazeta: aguardando autorização para comentar.');
  $('#submit-buy').hidden=!profile?.participant_id;
  const labels={pending:'Aguardando aprovação',approved:'Aprovada',rejected:'Recusada'};
  const mine=$('#my-requests');mine.replaceChildren();
@@ -99,7 +99,7 @@ function renderAccount(){
  for(const [approve,label] of [[true,'Confirmar compra'],[false,'Recusar']]){const b=el('button',label);b.onclick=()=>action(async()=>{if(!confirm(`${label} de ${r.name}, ${r.quotas} cota(s)?`))return;await request('/rest/v1/rpc/coffee_review',{p_id:r.id,p_approve:approve,p_version:data.state.version});await load();status(approve?'Compra confirmada e fila atualizada.':'Solicitação recusada.');});row.append(b);}buys.append(row);});
  if(!buys.children.length)buys.append(el('p','Nenhuma compra aguardando.'));
 }
-$('#signup').onsubmit=e=>{e.preventDefault();action(async()=>{if(!configured)throw Error('Configure o Supabase primeiro.');const f=e.target;await request('/auth/v1/signup',{email:f.elements.email.value,password:f.elements.password.value,data:{name:f.elements.name.value.trim()}});f.elements.password.value='';authMode='login';authView();status('Cadastro enviado. Se a confirmação por e-mail estiver habilitada, confirme no e-mail recebido. Depois entre e preencha seu perfil.');});};
+$('#signup').onsubmit=e=>{e.preventDefault();action(async()=>{if(!configured)throw Error('Configure o Supabase primeiro.');const f=e.target;await request('/auth/v1/signup',{email:f.elements.email.value,password:f.elements.password.value,data:{name:f.elements.name.value.trim()}});f.elements.password.value='';authMode='login';authView();status('Cadastro enviado. Se a confirmação por e-mail estiver habilitada, confirme no e-mail recebido. Depois entre e aguarde a aprovação do administrador.');});};
 $('#profile').onsubmit=e=>{e.preventDefault();action(async()=>{const f=e.target;await request('/rest/v1/rpc/coffee_profile_update',{p_name:f.elements.nickname.value.trim(),p_icon:f.elements.icon.value,p_photo:profilePhoto});await load();status('Perfil salvo!');});};
 $('#submit-buy').onsubmit=e=>{e.preventDefault();action(async()=>{const f=e.target,n=Number(f.elements.quantity.value),note=f.elements.note.value.trim(),signature=JSON.stringify([n,note]);if(!submission||submission.signature!==signature)submission={signature,id:crypto.randomUUID()};await request('/rest/v1/rpc/coffee_submit',{p_id:submission.id,p_quotas:n,p_note:note});submission=null;f.reset();await load();status('Compra enviada. Aguarde a confirmação do administrador.');});};
 // A confirmação de e-mail é concluída pelo Supabase. O usuário entra por senha depois.
@@ -159,7 +159,8 @@ $('#profile-photo').onchange=()=>action(async()=>{
  profilePhoto=photo;renderPhotoPreview();status('Foto escolhida. Clique em Salvar meu perfil para aplicar.');
 });
 $('#submit-buy').elements.quantity.addEventListener('input',()=>{const n=Number($('#submit-buy').elements.quantity.value);$('#quota-total').textContent=Number.isInteger(n)&&n>=1&&n<=100?`${n} cota(s) = ${n*250} g`:'Informe entre 1 e 100 cotas.';});
-function syncCommentAccess(){if(!$('#comment-form'))return;$('#comment-form').hidden=!token;$('#comments-login').hidden=Boolean(token);}
+function mayComment(){return Boolean(token&&(data?.admin||account?.can_comment===true));}
+function syncCommentAccess(){if(!$('#comment-form'))return;$('#comment-form').hidden=!mayComment();$('#comments-login').hidden=Boolean(token);$('#comments-approval').hidden=!token||mayComment();}
 let commentsVersion=0,commentAttempt=null;const confirmedComments=new Map();
 function renderComments(comments){
  $('#comments-list').replaceChildren();
@@ -179,8 +180,8 @@ async function loadComments(){
  renderComments([...byId.values()].sort((a,b)=>a.created_at.localeCompare(b.created_at)));$('#comments-status').textContent='';return true;
  }catch(e){if(version===commentsVersion){const saved=confirmedComments.get(page);if(saved?.size)renderComments([...saved.values()]);$('#comments-status').textContent='Não foi possível atualizar a conversa: '+e.message;}return false;}
 }
-$('#comments-refresh').onclick=()=>loadComments();
-$('#comment-form').onsubmit=e=>{e.preventDefault();action(async()=>{const form=e.target,body=form.elements.body.value.trim(),page=currentPostId();if(!body)throw Error('Escreva um comentário.');
+$('#comments-refresh').onclick=()=>action(async()=>{if(token){account=await request('/rest/v1/rpc/coffee_account',{});syncCommentAccess();}await loadComments();});
+$('#comment-form').onsubmit=e=>{e.preventDefault();action(async()=>{const form=e.target,body=form.elements.body.value.trim(),page=currentPostId();if(!mayComment()){$('#comments-status').textContent='Aguarde a aprovação do administrador para comentar.';return;}if(!body)throw Error('Escreva um comentário.');
  const signature=JSON.stringify([page,body]);if(!commentAttempt||commentAttempt.signature!==signature)commentAttempt={signature,id:crypto.randomUUID()};
  try{const saved=await request('/rest/v1/rpc/coffee_comment_publish',{p_id:commentAttempt.id,p_page:page,p_body:body});if(!saved?.id||typeof saved.body!=='string')throw Error('O banco não confirmou o comentário. Atualize a página e tente novamente.');if(!confirmedComments.has(page))confirmedComments.set(page,new Map());confirmedComments.get(page).set(saved.id,saved);commentAttempt=null;form.reset();if(page===currentPostId()){renderComments([saved]);const loaded=await loadComments();if(loaded)$('#comments-status').textContent='Comentário publicado!';}}catch(e){$('#comments-status').textContent='Não foi possível publicar: '+e.message;syncCommentAccess();}});};
 if(!configured)loadComments();
@@ -283,3 +284,10 @@ for(const button of document.querySelectorAll('[data-format]'))button.onclick=()
 
 const supportPhone=String(config.supportPhone||'').trim(),supportDigits=supportPhone.replace(/\D/g,'');
 if(supportDigits.length>=10&&supportDigits.length<=15){const link=el('a',supportPhone,'support-phone');link.href='tel:'+(supportPhone.startsWith('+')?'+':'')+supportDigits;link.setAttribute('aria-label','Ligar para o suporte: '+supportPhone);$('#support-contact').replaceChildren(link);}
+
+function renderCommentApprovals(){
+ const root=$('#comment-approval-profiles');root.replaceChildren();if(!data?.admin)return;
+ for(const profile of account?.profiles||[]){const row=el('article',undefined,'author-profile'),info=el('div');info.append(personLabel(profile.icon,profile.name,profile.photo),el('small',profile.is_admin?'Administrador · comentários liberados':profile.comments_approved?'Comentários autorizados':'Aguardando autorização para comentar'));
+ row.append(info);if(!profile.is_admin){const button=el('button',profile.comments_approved?'Bloquear comentários':'Autorizar comentários');button.type='button';button.onclick=()=>action(async()=>{await request('/rest/v1/rpc/coffee_comment_permission_set',{p_user:profile.user_id,p_enabled:!profile.comments_approved});await load();status(profile.comments_approved?'Comentários bloqueados para este perfil.':'Comentários autorizados para este perfil!');});row.append(button);}root.append(row);}
+ if(!root.children.length)root.append(el('p','Os perfis cadastrados aparecem aqui.'));
+}

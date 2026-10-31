@@ -133,3 +133,13 @@ Testes com API simulada verificam ADMIN no perfil, comentário e matéria; AUTOR
 O cadastro exige mínimo de 8 caracteres. No painel Supabase, confira também Authentication → Sign In / Providers → Email → Minimum password length: ajuste para 8 caso o servidor ainda exija 12. A mudança visual não altera a configuração do Supabase.
 
 Para publicar seu telefone no rodapé, preencha `supportPhone` em `config.js` (inclua DDD). O site mostra o número com link `tel:`. Enquanto estiver vazio, mostra um aviso de contato em breve, sem telefone fictício clicável. O telefone será público nas duas páginas. Não é necessário executar SQL.
+
+## Autorização separada de comentários — atualização 011
+
+Execute `supabase/011_member_approval.sql` após a 010. Ela cria `coffee_private.comment_permissions`, uma autorização independente da participação no rodízio e da insígnia de autor. Nenhum comentário antigo é removido. Todos os perfis não administrativos precisam de autorização explícita, inclusive quem já está na fila. O administrador continua podendo comentar.
+
+Na área administrativa, **Quem pode comentar na Gazeta** lista os perfis. Clique em **Autorizar comentários** ou **Bloquear comentários**. Não é necessário vincular uma vaga. Aprovar a vaga do café ou conceder a insígnia de autor não altera essa autorização. O membro pode usar Atualizar na conversa ou recarregar para conferir o aval. Um bloqueio já é aplicado pelo banco a novas tentativas de envio, mesmo com uma aba antiga aberta.
+
+A função privada `can_comment` verifica a autorização no servidor. `coffee_comment_add` valida essa regra; `coffee_comment_publish` chama a mesma função, portanto os dois endpoints ficam protegidos. Só o administrador pode chamar `coffee_comment_permission_set`. A tabela privada tem RLS e não concede acesso direto ao navegador. O formulário fica oculto para contas sem autorização e mostra um aviso.
+
+Testes com API simulada cobrem bloqueio nos dois endpoints, inclusive para autores sem vaga, concessão e retirada pelo painel, e comentário autorizado sem participação na fila. O SQL precisa ser aplicado e validado no Supabase real.
