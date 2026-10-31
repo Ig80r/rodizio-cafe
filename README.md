@@ -132,7 +132,7 @@ Testes com API simulada verificam ADMIN no perfil, comentário e matéria; AUTOR
 
 O cadastro exige mínimo de 8 caracteres. No painel Supabase, confira também Authentication → Sign In / Providers → Email → Minimum password length: ajuste para 8 caso o servidor ainda exija 12. A mudança visual não altera a configuração do Supabase.
 
-Para publicar seu telefone no rodapé, preencha `supportPhone` em `config.js` (inclua DDD). O site mostra o número com link `tel:`. Enquanto estiver vazio, mostra um aviso de contato em breve, sem telefone fictício clicável. O telefone será público nas duas páginas. Não é necessário executar SQL.
+Para publicar seu telefone no rodapé, preencha `supportPhone` em `config.js` (inclua DDD). O rodapé mostra o número como texto, somente ao abrir “Mostrar contato”. Enquanto estiver vazio, mostra um aviso de contato em breve, sem telefone fictício clicável. O telefone será público nas duas páginas. Não é necessário executar SQL.
 
 ## Autorização separada de comentários — atualização 011
 
@@ -153,3 +153,5 @@ A função `coffee_comment_reply` exige a autorização da 011, valida o coment�
 Excluir um comentário remove seu texto e mantém um marcador, preservando as respostas de outras pessoas. Autor e administrador mantêm a permissão de excluir somente nos casos já previstos. Comentários antigos e páginas são preservados.
 
 O teste de navegador com API simulada cobre resposta, resposta à resposta, cancelamento, exclusão sem remover descendentes, bloqueio de contas não autorizadas e layout em celular. A migração ainda precisa ser aplicada e validada no Supabase real.
+
+O suporte foi reduzido a uma nota discreta, sem caixa destacada. O telefone fica dentro de um detalhe recolhido e não tem link de ligação. O rodapé orienta a enviar mensagem em vez de ligar.

@@ -298,7 +298,7 @@ for(const button of document.querySelectorAll('[data-format]'))button.onclick=()
 };
 
 const supportPhone=String(config.supportPhone||'').trim(),supportDigits=supportPhone.replace(/\D/g,'');
-if(supportDigits.length>=10&&supportDigits.length<=15){const link=el('a',supportPhone,'support-phone');link.href='tel:'+(supportPhone.startsWith('+')?'+':'')+supportDigits;link.setAttribute('aria-label','Ligar para o suporte: '+supportPhone);$('#support-contact').replaceChildren(link);}
+if(supportDigits.length>=10&&supportDigits.length<=15){$('#support-contact').textContent=supportPhone;}
 
 function renderCommentApprovals(){
  const root=$('#comment-approval-profiles');root.replaceChildren();if(!data?.admin)return;

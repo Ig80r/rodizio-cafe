@@ -170,3 +170,9 @@ body[data-page=cafe] .intro h1{font-size:clamp(42px,5vw,66px);line-height:1.08;t
 
 .comment-reply{margin-left:calc(var(--reply-depth)*20px);padding-left:14px;border-left:2px solid #7c6451}.reply-recipient{display:block;color:#d2b687!important;margin-bottom:8px}.comment-actions{display:flex;gap:8px}.comment-actions button{background:transparent;box-shadow:none}.comment-deleted>p{font-style:italic;color:var(--muted)}#reply-context{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-left:3px solid var(--gold);background:#44352e;margin-bottom:16px;font-size:13px}#cancel-reply{font-size:11px;padding:6px 9px}
 @media(max-width:750px){.comment-reply{margin-left:calc(var(--reply-depth)*10px);padding-left:10px}#reply-context{flex-wrap:wrap}}
+
+/* Small, secondary support note; the phone is revealed only on request. */
+.support-footer{border:0;background:transparent;padding:0;margin:0 0 16px;font-size:11px;color:#aaa199}
+.support-caption{font-size:10px;color:#b9ada0}.support-footer p{font-size:11px;color:#aaa199;line-height:1.5;margin:4px 0 6px}
+.support-details summary{display:list-item;list-style-position:inside;cursor:pointer;font-size:10px;color:#b8aa98;width:fit-content;margin:0 auto;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+.support-details summary:hover{color:#e1d1b9}.support-details #support-contact{font-size:12px;line-height:1.5;color:#c6b9a6;margin-top:9px}.support-details small{display:block;font-size:10px;line-height:1.5;color:#aaa199;margin-top:3px}
