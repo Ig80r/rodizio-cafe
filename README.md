@@ -49,3 +49,13 @@ A ilustração principal usa `assets/science-lab-animated.svg`, com vapor, chuva
 Para regenerar o cenário: `python scripts/pixel_art.py` e depois `python scripts/science_art.py`. A arte é original e feita em SVG numa grade de pixels. O teste de navegador também verifica reprodução automática, movimento reduzido e a posição da xícara fora da fotografia do jornal.
 
 A Gazeta agora tem duas páginas fictícias: a xícara no canto inferior direito avança e volta, com suporte a teclado. As frases, autores e datas estão no array `pearlPages` de `app.js`; o HTML contém a primeira página como conteúdo inicial. O ícone do cabeçalho reutiliza os mesmos traços da xícara da logo (`assets/logo-cup.svg`). O quadro mostra três equações de Maxwell, entropia de Shannon em bits e campo elétrico saindo de uma carga positiva com uma superfície gaussiana tracejada.
+
+## Nome, foto e comentários — atualização 002
+
+Se o banco já foi instalado, execute **somente `supabase/002_profiles_comments.sql`** inteiro no SQL Editor. Para instalação nova, execute `schema.sql` e depois `002_profiles_comments.sql`. A migração preserva contas, compras, permissões administrativas e fila existentes. Depois publique `index.html`, `app.js` e `style.css` atualizados.
+
+O cadastro envia o nome como metadado; um trigger cria o perfil automaticamente. Contas antigas podem preencher o nome no perfil. Após o vínculo pelo administrador, o nome e a foto aparecem na fila pública. A imagem escolhida (JPG, PNG ou WebP, até 5 MB) é recortada no centro e convertida em JPEG 320 × 320 no navegador. O JPEG otimizado fica na tabela privada de perfis, com limite de 150 mil caracteres, sem bucket adicional. Salvar o perfil aplica a foto; “Usar só o bicho” remove a foto ao salvar.
+
+Cafeteiros aprovados solicitam entre 1 e 100 cotas de 250 g. A compra e a mudança de fila continuam dependendo da confirmação administrativa. As solicitações aparecem no painel do administrador.
+
+Cada página da Gazeta tem um ID estável (`gazeta-001`, `gazeta-002`). Comentários são públicos, mas somente contas autenticadas com perfil podem publicar (até 500 caracteres). O autor e os administradores podem excluir. Cada leitura mostra os 100 comentários mais recentes, em ordem cronológica; o botão Atualizar busca novas mensagens. Os textos são renderizados com `textContent`, sem HTML. As políticas e RPCs verificam identidade no servidor. O teste de navegador usa API simulada para conferir cadastro com nome, upload de foto, três cotas (750 g), isolamento dos comentários por página e exclusão. A migração precisa ser aplicada e validada no Supabase real.

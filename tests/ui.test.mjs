@@ -10,22 +10,38 @@ test('navegação, cadastro, login, logout e layout móvel',async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  let browser;
  try{
- browser=await chromium.launch({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{})});const page=await browser.newPage({viewport:{width:1440,height:1050}});const errors=[];page.on('pageerror',e=>errors.push(e.message));let logged=false,adminMode=false;
+ browser=await chromium.launch({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{})});const page=await browser.newPage({viewport:{width:1440,height:1050}});page.setDefaultTimeout(8000);const errors=[];page.on('pageerror',e=>errors.push(e.message));let logged=false,adminMode=false,photo=null,profileName="Ana",signupName=null,submittedQuotas=null;const comments=[];
  await page.route('https://fonts.googleapis.com/**',r=>r.abort());
- await page.route('https://*.supabase.co/**',async route=>{const path=new URL(route.request().url()).pathname;let body={};
+ await page.route('https://*.supabase.co/**',async route=>{const path=new URL(route.request().url()).pathname,payload=route.request().postDataJSON();let body={};
+ if(path.endsWith('/signup'))signupName=payload.data.name;
+ if(path.endsWith('/coffee_profile_update')){photo=payload.p_photo;profileName=payload.p_name;}
+ if(path.endsWith('/coffee_submit'))submittedQuotas=payload.p_quotas;
+ if(path.endsWith('/coffee_comments_read'))body=comments.filter(c=>c.page===payload.p_page);
+ if(path.endsWith('/coffee_comment_add'))comments.push({id:payload.p_id,page:payload.p_page,body:payload.p_body,name:profileName,icon:'🦊',photo,created_at:'2026-10-31T12:00:00Z',can_delete:true});
+ if(path.endsWith('/coffee_comment_delete')){const index=comments.findIndex(c=>c.id===payload.p_id);if(index>=0)comments.splice(index,1);}
  if(path.endsWith('/token')){logged=true;body={access_token:'test-token'};}
  if(path.endsWith('/logout'))logged=false;
- if(path.endsWith('/coffee_read'))body={admin:adminMode&&logged,state:{version:0,participants:[{id:'1',name:'Ana',icon:'🦊',active:true}],queue:['1']},history:[]};
- if(path.endsWith('/coffee_account'))body={profile:{user_id:'u1',name:'Ana',icon:'🦊',participant_id:'1'},profiles:adminMode?[{user_id:'u2',name:'Cafeteiro exemplo',icon:'🐸',participant_id:null}]:[],requests:[{id:'request-example',user_id:'u1',name:'Ana',icon:'🦊',quotas:2,note:'Café para a próxima rodada (exemplo)',status:'pending',created_at:'2026-10-31T12:00:00Z'}]};
+ if(path.endsWith('/coffee_read'))body={admin:adminMode&&logged,state:{version:0,participants:[{id:'1',name:profileName,icon:'🦊',photo,active:true}],queue:['1']},history:[]};
+ if(path.endsWith('/coffee_account'))body={profile:{user_id:'u1',name:profileName,icon:'🦊',photo,participant_id:'1'},profiles:adminMode?[{user_id:'u2',name:'Cafeteiro exemplo',icon:'🐸',participant_id:null}]:[],requests:[{id:'request-example',user_id:'u1',name:'Ana',icon:'🦊',quotas:2,note:'Café para a próxima rodada (exemplo)',status:'pending',created_at:'2026-10-31T12:00:00Z'}]};
  await route.fulfill({json:body});});
  await page.goto('http://127.0.0.1:'+server.address().port);await page.locator('#next').filter({hasText:'Ana'}).waitFor();
  await page.locator('#admin-toggle').click();assert.equal(await page.locator('#overview').isVisible(),false);assert.equal(await page.locator('#login').isVisible(),true);assert.equal(await page.locator('#signup').isVisible(),false);
  if(process.env.SCREENSHOT_PATH)await page.screenshot({path:process.env.SCREENSHOT_PATH.replace('.png','-login.png'),fullPage:true});
- await page.locator('#signup-tab').click();await page.locator('#signup input[name=email]').fill('ana@example.com');await page.locator('#signup input[name=password]').fill('test-password-123');await page.locator('#signup button').click();await page.locator('#status').filter({hasText:'Cadastro enviado'}).waitFor();assert.equal(await page.locator('#login').isVisible(),true);
+ await page.locator('#signup-tab').click();await page.locator('#signup input[name=name]').fill('Ana Silva');await page.locator('#signup input[name=email]').fill('ana@example.com');await page.locator('#signup input[name=password]').fill('test-password-123');await page.locator('#signup button').click();await page.locator('#status').filter({hasText:'Cadastro enviado'}).waitFor();assert.equal(await page.locator('#login').isVisible(),true);assert.equal(signupName,'Ana Silva');
  await page.locator('#login input[name=email]').fill('ana@example.com');await page.locator('#login input[name=password]').fill('test-password-123');await page.locator('#login button').click();await page.locator('#member').waitFor();assert.equal(logged,true);assert.equal(await page.locator('#controls').isVisible(),false);assert.equal(await page.locator('.auth-tabs').isVisible(),false);
+
+ await page.locator('#profile-photo').setInputFiles({name:'foto.png',mimeType:'image/png',buffer:Buffer.from(await page.evaluate(()=>{const c=document.createElement('canvas');c.width=c.height=20;const ctx=c.getContext('2d');ctx.fillStyle='#a08060';ctx.fillRect(0,0,20,20);return c.toDataURL('image/png').split(',')[1];}),'base64')});
+ await page.locator('#photo-preview .profile-picture').waitFor();await page.locator('#profile input[name=nickname]').fill('Ana Silva');await page.locator('#profile button:not([type=button])').click();await page.locator('#status').filter({hasText:'Perfil salvo!'}).waitFor();assert.match(photo,/^data:image\/jpeg;base64,/);
+ await page.locator('#submit-buy input[name=quantity]').fill('3');assert.match(await page.locator('#quota-total').innerText(),/750 g/);await page.locator('#submit-buy button').click();await page.locator('#status').filter({hasText:'Compra enviada'}).waitFor();assert.equal(submittedQuotas,3);
+ await page.locator('#overview-tab').click();assert.match(await page.locator('#next').innerText(),/Ana Silva/);assert.equal(await page.locator('#queue .profile-picture').count(),1);
+ await page.locator('#comment-form textarea').fill('Página um: <script>texto seguro</script>');await page.locator('#comment-form button').click();await page.locator('#comments-list').filter({hasText:'Página um:'}).waitFor();assert.equal(await page.locator('#comments-list script').count(),0);
+ await page.locator('#paper-turn').click();await page.locator('#comments-list').filter({hasText:'Nenhum comentário'}).waitFor();await page.locator('#comment-form textarea').fill('Só na segunda página.');await page.locator('#comment-form button').click();await page.locator('#comments-list').filter({hasText:'Só na segunda'}).waitFor();
+ await page.locator('#paper-turn').click();await page.locator('#comments-list').filter({hasText:'Página um:'}).waitFor();assert.doesNotMatch(await page.locator('#comments-list').innerText(),/Só na segunda/);
+ page.once('dialog',d=>d.accept());await page.locator('#comments-list button').click();await page.locator('#comments-list').filter({hasText:'Nenhum comentário'}).waitFor();assert.equal(comments.length,1);
+ await page.locator('#admin-toggle').click();
  if(process.env.SCREENSHOT_PATH)await page.screenshot({path:process.env.SCREENSHOT_PATH.replace('.png','-cafeteiro.png'),fullPage:true});
  await page.locator('#logout').click();await page.locator('#login').waitFor();assert.equal(logged,false);assert.equal(await page.locator('#member').isVisible(),false);assert.equal(await page.locator('#signup').isVisible(),false);
- await page.locator('#overview-tab').click();assert.match(await page.title(),/Café do LSN/);assert.equal(await page.locator('#queue .avatar').getAttribute('src'),'./assets/raposa.svg');assert.equal(await page.locator('.cafe-scene img').evaluate(img=>img.complete&&img.naturalWidth>0),true);assert.equal(await page.locator('#mural blockquote').count(),1);for(const selector of ['.brand-logo','.top-coffee'])assert.equal(await page.locator(selector).evaluate(img=>img.complete&&img.naturalWidth>0),true);assert.match(await page.locator('.quote-credit').innerText(),/Bolsista anônimo/);await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.locator('#overview-tab').click();assert.match(await page.title(),/Café do LSN/);assert.equal(await page.locator('#queue .avatar').getAttribute('src'),photo);assert.equal(await page.locator('.cafe-scene img').evaluate(img=>img.complete&&img.naturalWidth>0),true);assert.equal(await page.locator('#mural blockquote').count(),1);for(const selector of ['.brand-logo','.top-coffee'])assert.equal(await page.locator(selector).evaluate(img=>img.complete&&img.naturalWidth>0),true);assert.match(await page.locator('.quote-credit').innerText(),/Bolsista anônimo/);await page.emulateMedia({reducedMotion:'no-preference'});
  await page.locator('#paper-turn').click();assert.match(await page.locator('#pearl-page blockquote').innerText(),/reproduzível/);assert.equal(await page.locator('#paper-page-number').innerText(),'Página 2 de 2');
  await page.locator('#paper-turn').focus();await page.keyboard.press('Enter');assert.match(await page.locator('#pearl-page blockquote').innerText(),/nossa fé/);assert.equal(await page.locator('#paper-page-number').innerText(),'Página 1 de 2');
  assert.equal(await page.locator('#scene-motion').count(),0);
@@ -42,6 +58,6 @@ test('navegação, cadastro, login, logout e layout móvel',async()=>{
  assert.equal(await page.locator('#pending-profiles .person').count(),1);assert.equal(await page.locator('#pending-buys .person').count(),1);
  if(process.env.SCREENSHOT_PATH){await page.screenshot({path:process.env.SCREENSHOT_PATH.replace('.png','-administracao.png'),fullPage:true});await page.locator('#controls').screenshot({path:process.env.SCREENSHOT_PATH.replace('.png','-painel-admin.png')});}
  assert.deepEqual(errors,[]);
- }finally{await browser?.close();await new Promise(r=>server.close(r));}
+ }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
 
