@@ -176,3 +176,6 @@ body[data-page=cafe] .intro h1{font-size:clamp(42px,5vw,66px);line-height:1.08;t
 .support-caption{font-size:10px;color:#b9ada0}.support-footer p{font-size:11px;color:#aaa199;line-height:1.5;margin:4px 0 6px}
 .support-details summary{display:list-item;list-style-position:inside;cursor:pointer;font-size:10px;color:#b8aa98;width:fit-content;margin:0 auto;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
 .support-details summary:hover{color:#e1d1b9}.support-details #support-contact{font-size:12px;line-height:1.5;color:#c6b9a6;margin-top:9px}.support-details small{display:block;font-size:10px;line-height:1.5;color:#aaa199;margin-top:3px}
+
+.site-footer{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;text-align:left}.footer-brand{display:grid;gap:6px;padding-top:2px;flex:1}.site-footer .support-footer{margin:0;max-width:390px;text-align:right;flex:1}.site-footer .support-details summary{margin:0 0 0 auto}.support-email{color:#cdbb9e;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}.support-email:hover{color:#f3dfbd}
+@media(max-width:600px){.site-footer{gap:14px}.footer-brand{font-size:11px;max-width:45%}.footer-brand .footer-divider{margin:0 4px}.site-footer .support-footer{max-width:55%}.support-email{font-size:11px}}

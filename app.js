@@ -1,4 +1,4 @@
-import {config} from './config.js?v=20261108';
+import {config} from './config.js?v=20261112';
 import {formatArticle,applyArticleStyle} from './formatting.js';
 const $=s=>document.querySelector(s);
 const isGazette=document.body.dataset.page==='gazeta';let returnToComments=false;
@@ -297,8 +297,9 @@ for(const button of document.querySelectorAll('[data-format]'))button.onclick=()
  input.setRangeText(value,start,end,'end');input.focus();if(!selected)input.setSelectionRange(start+innerStart,start+innerStart+(mode==='link'?'Texto do link'.length:mode==='unordered'||mode==='ordered'?'Item da lista'.length:'Seu texto'.length));input.dispatchEvent(new Event('input',{bubbles:true}));
 };
 
-const supportPhone=String(config.supportPhone||'').trim(),supportDigits=supportPhone.replace(/\D/g,'');
-if(supportDigits.length>=10&&supportDigits.length<=15){$('#support-contact').textContent=supportPhone;}
+const supportEmail=String(config.supportEmail||'').trim();
+if(/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(supportEmail)){const link=el('a',supportEmail,'support-email');link.href='mailto:'+supportEmail;$('#support-contact').replaceChildren(link);}
+
 
 function renderCommentApprovals(){
  const root=$('#comment-approval-profiles');root.replaceChildren();if(!data?.admin)return;

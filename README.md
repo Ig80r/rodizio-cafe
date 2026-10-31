@@ -155,3 +155,5 @@ Excluir um comentário remove seu texto e mantém um marcador, preservando as re
 O teste de navegador com API simulada cobre resposta, resposta à resposta, cancelamento, exclusão sem remover descendentes, bloqueio de contas não autorizadas e layout em celular. A migração ainda precisa ser aplicada e validada no Supabase real.
 
 O suporte foi reduzido a uma nota discreta, sem caixa destacada. O telefone fica dentro de um detalhe recolhido e não tem link de ligação. O rodapé orienta a enviar mensagem em vez de ligar.
+
+O contato do rodapé agora usa `supportEmail` em `config.js`, com link de e-mail dentro do detalhe recolhido. O número de telefone foi removido da configuração. O suporte fica ao lado de “Café do LSN / Vai um cafézin?”, inclusive no celular.
