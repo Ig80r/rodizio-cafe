@@ -10,9 +10,13 @@ test('navegação, cadastro, login, logout e layout móvel',async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  let browser;
  try{
- browser=await chromium.launch({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{})});const page=await browser.newPage({viewport:{width:1440,height:1050}});page.setDefaultTimeout(8000);const errors=[];page.on('pageerror',e=>errors.push(e.message));let logged=false,adminMode=false,photo=null,profileName="Ana",signupName=null,submittedQuotas=null;const comments=[];
+ browser=await chromium.launch({headless:true,...(process.env.BROWSER_PATH?{executablePath:process.env.BROWSER_PATH}:{})});const page=await browser.newPage({viewport:{width:1440,height:1050}});page.setDefaultTimeout(8000);const errors=[];page.on('pageerror',e=>errors.push(e.message));let logged=false,adminMode=false,photo=null,profileName="Ana",signupName=null,submittedQuotas=null;const comments=[];let failComment=false,publishCalls=0;
+ const posts=[{id:'gazeta-001',title:'Direto da bancada',quote:'O código não tem bug. Ele só está testando a nossa fé.',author:'Bolsista anônimo',published_on:'2026-10-31'},{id:'gazeta-002',title:'Mais uma tentativa',quote:'Meu experimento é reproduzível. O erro acontece toda vez.',author:'Pesquisador sem cafeína',published_on:'2026-10-31'}];
  await page.route('https://fonts.googleapis.com/**',r=>r.abort());
  await page.route('https://*.supabase.co/**',async route=>{const path=new URL(route.request().url()).pathname,payload=route.request().postDataJSON();let body={};
+ if(path.endsWith('/coffee_posts_read'))body=posts;
+ if(path.endsWith('/coffee_post_publish')){publishCalls++;if(!adminMode){await route.fulfill({status:403,json:{message:'Acesso exclusivo do administrador.'}});return;}posts.unshift({id:payload.p_id,title:payload.p_title,quote:payload.p_quote,author:payload.p_author,published_on:payload.p_date,body:payload.p_body,image:payload.p_image,caption:payload.p_caption});}
+ if(path.endsWith('/coffee_comment_add')&&failComment){failComment=false;await route.fulfill({status:400,json:{message:'Falha temporária no envio.'}});return;}
  if(path.endsWith('/signup'))signupName=payload.data.name;
  if(path.endsWith('/coffee_profile_update')){photo=payload.p_photo;profileName=payload.p_name;}
  if(path.endsWith('/coffee_submit'))submittedQuotas=payload.p_quotas;
@@ -34,7 +38,7 @@ test('navegação, cadastro, login, logout e layout móvel',async()=>{
  await page.locator('#photo-preview .profile-picture').waitFor();await page.locator('#profile input[name=nickname]').fill('Ana Silva');await page.locator('#profile button:not([type=button])').click();await page.locator('#status').filter({hasText:'Perfil salvo!'}).waitFor();assert.match(photo,/^data:image\/jpeg;base64,/);
  await page.locator('#submit-buy input[name=quantity]').fill('3');assert.match(await page.locator('#quota-total').innerText(),/750 g/);await page.locator('#submit-buy button').click();await page.locator('#status').filter({hasText:'Compra enviada'}).waitFor();assert.equal(submittedQuotas,3);
  await page.locator('#overview-tab').click();assert.match(await page.locator('#next').innerText(),/Ana Silva/);assert.equal(await page.locator('#queue .profile-picture').count(),1);
- await page.locator('#comment-form textarea').fill('Página um: <script>texto seguro</script>');await page.locator('#comment-form button').click();await page.locator('#comments-list').filter({hasText:'Página um:'}).waitFor();assert.equal(await page.locator('#comments-list script').count(),0);
+ failComment=true;await page.locator('#comment-form textarea').fill('Página um: <script>texto seguro</script>');await page.locator('#comment-form button').click();await page.locator('#comments-status').filter({hasText:'Falha temporária'}).waitFor();assert.match(await page.locator('#comment-form textarea').inputValue(),/Página um/);await page.locator('#comment-form button').click();await page.locator('#comments-list').filter({hasText:'Página um:'}).waitFor();assert.equal(await page.locator('#comments-list script').count(),0);
  await page.locator('#paper-turn').click();await page.locator('#comments-list').filter({hasText:'Nenhum comentário'}).waitFor();await page.locator('#comment-form textarea').fill('Só na segunda página.');await page.locator('#comment-form button').click();await page.locator('#comments-list').filter({hasText:'Só na segunda'}).waitFor();
  await page.locator('#paper-turn').click();await page.locator('#comments-list').filter({hasText:'Página um:'}).waitFor();assert.doesNotMatch(await page.locator('#comments-list').innerText(),/Só na segunda/);
  page.once('dialog',d=>d.accept());await page.locator('#comments-list button').click();await page.locator('#comments-list').filter({hasText:'Nenhum comentário'}).waitFor();assert.equal(comments.length,1);
@@ -56,7 +60,19 @@ test('navegação, cadastro, login, logout e layout móvel',async()=>{
  await page.locator('#admin-toggle').click();
  await page.locator('#login input[name=email]').fill('admin@example.com');await page.locator('#login input[name=password]').fill('test-password-123');await page.locator('#login button').click();await page.locator('#controls').waitFor();
  assert.equal(await page.locator('#pending-profiles .person').count(),1);assert.equal(await page.locator('#pending-buys .person').count(),1);
+
+ await page.locator('#post-form input[name=title]').fill('Café com ciência');await page.locator('#post-form textarea[name=quote]').fill('A hipótese mais forte é que falta café.');await page.locator('#post-form input[name=author]').fill('Equipe LSN');await page.locator('#post-form textarea[name=body]').fill('Uma nova edição para o laboratório.');await page.locator('#post-form input[name=caption]').fill('Imagem de teste');
+ assert.match(await page.locator('#post-preview').innerText(),/A hipótese mais forte/);assert.equal(publishCalls,0);assert.equal(posts.length,2);
+ await page.locator('#post-image').setInputFiles({name:'gazeta.png',mimeType:'image/png',buffer:Buffer.from(await page.evaluate(()=>{const c=document.createElement('canvas');c.width=200;c.height=100;const ctx=c.getContext('2d');ctx.fillStyle='#a08060';ctx.fillRect(0,0,200,100);return c.toDataURL().split(',')[1];}),'base64')});
+ await page.locator('#post-preview img').waitFor();
+ await page.locator('#post-form button[type=submit]').click();await page.locator('#post-status').filter({hasText:'Publicado!'}).waitFor();assert.equal(posts.length,3);assert.match(posts[0].image,/^data:image\/jpeg;base64,/);
+ await page.locator('#overview-tab').click();assert.match(await page.locator('#pearl-page').innerText(),/A hipótese mais forte/);assert.equal(await page.locator('.publication-photo').count(),1);
+ await page.locator('#comment-form textarea').fill('Comentário da nova edição');await page.locator('#comment-form button').click();await page.locator('#comments-list').filter({hasText:'Comentário da nova'}).waitFor();assert.equal(comments.at(-1).page,posts[0].id);
+ await page.locator('#paper-turn').click();await page.locator('#comments-list').filter({hasText:'Nenhum comentário'}).waitFor();assert.doesNotMatch(await page.locator('#comments-list').innerText(),/Comentário da nova/);
+ await page.locator('#admin-toggle').click();
+ for(const width of [375,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'editor overflow '+width);}
  if(process.env.SCREENSHOT_PATH){await page.screenshot({path:process.env.SCREENSHOT_PATH.replace('.png','-administracao.png'),fullPage:true});await page.locator('#controls').screenshot({path:process.env.SCREENSHOT_PATH.replace('.png','-painel-admin.png')});}
+ await page.reload();await page.locator('#next').filter({hasText:'Ana Silva'}).waitFor();await page.locator('#admin-toggle').click();await page.locator('#controls').waitFor();assert.equal(await page.locator('#login').isVisible(),false);
  assert.deepEqual(errors,[]);
  }finally{await browser?.close();server.closeAllConnections();await new Promise(r=>server.close(r));}
 });

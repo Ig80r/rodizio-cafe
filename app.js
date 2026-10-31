@@ -1,7 +1,7 @@
 import {config} from './config.js';
 const $=s=>document.querySelector(s);
 const icons=['🦊','🐸','🦥','🦖','🐙','🦄','🐼','🐧','🦉','🐝'];
-let token=null, data=null, draft=[], busy=false, pending=null, account=null, submission=null;
+let token=readSession(), data=null, draft=[], busy=false, pending=null, account=null, submission=null;
 const configured=Boolean(config.supabaseUrl && config.supabaseKey);
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 const spriteNames=['raposa','carcara','sagui','tatu-peba','prea','moco','gato-do-mato','mao-pelada','coruja-buraqueira','bem-te-vi'];
@@ -10,6 +10,9 @@ function avatar(icon,photo=null){const index=icons.indexOf(icon),img=el('img',un
 function personLabel(icon,name,photo=null){const label=el('b',undefined,'person-label');label.append(avatar(icon,photo),el('span',name));return label;}
 let profilePhoto=null;
 let authMode='login';
+function readSession(){try{const session=JSON.parse(sessionStorage.getItem('coffee-session'));if(session?.expiresAt>Date.now())return session.token;sessionStorage.removeItem('coffee-session');}catch{}return null;}
+function clearSession(){try{sessionStorage.removeItem('coffee-session');}catch{}}
+function rememberSession(result){try{sessionStorage.setItem('coffee-session',JSON.stringify({token:result.access_token,expiresAt:Date.now()+(Number(result.expires_in)||3600)*1000}));}catch{}}
 function status(text){$('#status').textContent=text;}
 function authView(){
  $('#login').hidden=Boolean(token)||authMode!=='login';
@@ -32,11 +35,11 @@ async function request(path,body){
  if(token)headers.Authorization=`Bearer ${token}`;
  const r=await fetch(config.supabaseUrl.replace(/\/$/,'')+path,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});
  const result=await r.json().catch(()=>null);
- if(!r.ok){if(r.status===401){token=null;account=null;$('#controls').hidden=true;$('#member').hidden=true;authView();}throw Error(result?.message||result?.error_description||result?.msg||`Falha de conexão (${r.status}).`);}
+ if(!r.ok){if(r.status===401){clearSession();token=null;account=null;$('#controls').hidden=true;$('#member').hidden=true;authView();}throw Error(result?.message||result?.error_description||result?.msg||`Falha de conexão (${r.status}).`);}
  return result;
 }
 async function action(fn){if(busy)return;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn();}catch(e){status(e.message);}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}
-async function load(){if(!configured)return;const fresh=await request('/rest/v1/rpc/coffee_read',{});data=fresh;account=token?await request('/rest/v1/rpc/coffee_account',{}):null;draft=structuredClone(data.state.participants);status('');render();$('#updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');await loadComments();}
+async function load(){if(!configured)return;const fresh=await request('/rest/v1/rpc/coffee_read',{});data=fresh;account=token?await request('/rest/v1/rpc/coffee_account',{}):null;draft=structuredClone(data.state.participants);status('');render();$('#updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');await loadPosts();await loadComments();}
 function ordered(){return data.state.queue.map(id=>data.state.participants.find(p=>p.id===id)).filter(Boolean);}
 function render(){syncDraft();const queue=ordered(),h=data.history;$('#next').replaceChildren(...(queue[0]?[avatar(queue[0].icon,queue[0].photo),el('span',queue[0].name)]:[el('span','Garrafa em modo soneca')]));$('#people').textContent=queue.length;const total=h.reduce((s,x)=>s+x.quotas,0);$('#quotas').textContent=total;$('#weight').textContent=(total*250/1000).toLocaleString('pt-BR')+' kg';$('#queue').replaceChildren();queue.forEach((p,i)=>{const card=el('article',undefined,'person');card.append(avatar(p.icon,p.photo),el('b',p.name),el('small',i===0?'Sua missão, cafeteiro!':`${i+1}º na fila`));$('#queue').append(card);});if(!queue.length)$('#queue').append(el('p','Nenhum participante ativo.'));
  $('#history').replaceChildren();h.forEach(x=>{const row=el('article',undefined,'history-row'),left=el('div');left.append(personLabel(x.buyer_icon,x.buyer_name),el('small',new Date(x.created_at).toLocaleString('pt-BR')));if(x.note)left.append(el('small',x.note));row.append(left,el('strong',`${x.quotas} × 250 g = ${x.quotas*250} g`));$('#history').append(row);});if(!h.length)$('#history').append(el('p','Nenhum herói por aqui. Quem traz o primeiro pacote?'));
@@ -45,8 +48,8 @@ function renderEditors(){const root=$('#editors');root.replaceChildren();draft.f
 function preview(){if(!data)return;const n=Number($('#purchase').elements.quantity.value),q=ordered();$('#preview').textContent=Number.isInteger(n)&&n>0&&n<=100&&q.length?`${n} cota(s) = ${n*250} g. Próxima pessoa: ${q[n%q.length].name}.`:'Informe entre 1 e 100 cotas.';}
 $('#admin-toggle').onclick=()=>showPage(true);
 $('#refresh').onclick=()=>action(load);
-$('#login').onsubmit=e=>{e.preventDefault();action(async()=>{if(!configured)throw Error('Configure o Supabase em config.js primeiro.');const f=e.target;const result=await request('/auth/v1/token?grant_type=password',{email:f.elements.email.value,password:f.elements.password.value});token=result.access_token;f.elements.password.value='';authView();await load();status('Bem-vindo ao balcão!');});};
-$('#logout').onclick=()=>action(async()=>{try{await request('/auth/v1/logout',{});}finally{token=null;account=null;authMode='login';$('#controls').hidden=true;$('#member').hidden=true;$('#signup').hidden=false;$('#login').hidden=false;$('#logout').hidden=true;authView();await load();status('Até a próxima dose!');}});
+$('#login').onsubmit=e=>{e.preventDefault();action(async()=>{if(!configured)throw Error('Configure o Supabase em config.js primeiro.');const f=e.target;const result=await request('/auth/v1/token?grant_type=password',{email:f.elements.email.value,password:f.elements.password.value});token=result.access_token;rememberSession(result);f.elements.password.value='';authView();await load();status('Bem-vindo ao balcão!');});};
+$('#logout').onclick=()=>action(async()=>{try{await request('/auth/v1/logout',{});}finally{clearSession();token=null;account=null;authMode='login';$('#controls').hidden=true;$('#member').hidden=true;$('#signup').hidden=false;$('#login').hidden=false;$('#logout').hidden=true;authView();await load();status('Até a próxima dose!');}});
 $('#purchase').elements.quantity.oninput=preview;
 $('#purchase').onsubmit=e=>{e.preventDefault();action(async()=>{const f=e.target,n=Number(f.elements.quantity.value),note=f.elements.note.value.trim();const signature=JSON.stringify([data.state.version,n,note]);if(!pending||pending.signature!==signature)pending={signature,id:crypto.randomUUID()};await request('/rest/v1/rpc/coffee_buy',{p_version:data.state.version,p_id:pending.id,p_quotas:n,p_note:note});pending=null;f.reset();await load();status('Compra registrada. Fila atualizada!');});};
 $('#add').onclick=()=>{if(draft.length>=30)return status('Limite de 30 participantes.');draft.push({id:crypto.randomUUID(),name:'Nova pessoa',icon:icons[draft.length%icons.length],active:true});renderEditors();};
@@ -93,22 +96,36 @@ function syncSceneMotion(){
 syncSceneMotion();
 motionPreference.addEventListener('change',syncSceneMotion);
 
-// Two clearly fictional sample pages. Edit these entries when real pearls arrive.
-const pearlPages=[
- {quote:'“O código não tem bug. Ele só está testando a nossa fé.”',author:'— Bolsista anônimo',date:'31/10/2026 · entre um café e um commit'},
- {quote:'“Meu experimento é reproduzível. O erro acontece toda vez.”',author:'— Pesquisador sem cafeína',date:'31/10/2026 · depois da terceira tentativa'}
+// Stable publication IDs keep comments attached when pages are reordered.
+let pearlPages=[
+ {id:'gazeta-001',title:'Direto da bancada',quote:'O código não tem bug. Ele só está testando a nossa fé.',author:'Bolsista anônimo',published_on:'2026-10-31',caption:'Flagrante: mais uma tentativa de resolver tudo com café.'},
+ {id:'gazeta-002',title:'Mais uma tentativa',quote:'Meu experimento é reproduzível. O erro acontece toda vez.',author:'Pesquisador sem cafeína',published_on:'2026-10-31',caption:'Entre um café e um experimento.'}
 ];
-let pearlPage=0;
-$('#paper-turn').onclick=()=>{
- pearlPage=1-pearlPage;
- const page=pearlPages[pearlPage];loadComments();
- $('#pearl-page blockquote').textContent=page.quote;
- $('.quote-credit strong').textContent=page.author;
- $('.quote-credit span').textContent=page.date;
+let pearlPage=0,postsLoaded=false;
+function currentPostId(){return pearlPages[pearlPage]?.id;}
+function renderPost(){
+ const page=pearlPages[pearlPage];if(!page)return;
+ $('#post-title').textContent=page.title;$('#post-title').hidden=false;
+ $('#pearl-page blockquote').textContent='“'+page.quote+'”';
+ $('.quote-credit strong').textContent='— '+page.author;
+ const date=new Date(page.published_on+'T12:00:00').toLocaleDateString('pt-BR');
+ $('.quote-credit span').textContent=date;
+ $('.paper-dateline time').textContent=date;$('.paper-dateline time').dateTime=page.published_on;
+ $('#post-body').textContent=page.body||'';$('#post-body').hidden=!page.body;
+ const img=$('.paper-photo img');img.src=validPostImage(page.image)?page.image:'./assets/science-lab.svg';img.classList.toggle('publication-photo',validPostImage(page.image));img.alt=page.caption||page.title;
+ $('.paper-photo figcaption').textContent=page.caption||'';
  $('#paper-page-number').textContent=`Página ${pearlPage+1} de ${pearlPages.length}`;
- $('#paper-turn-label').textContent=pearlPage?'← Voltar à primeira':'Próxima página →';
- $('#paper-turn').setAttribute('aria-label',pearlPage?'Voltar à página 1 da Gazeta':'Ir para a página 2 da Gazeta');
-};
+ $('#paper-turn-label').textContent=pearlPage===pearlPages.length-1?'← Voltar à primeira':'Próxima página →';
+ $('#paper-turn').setAttribute('aria-label',pearlPage===pearlPages.length-1?'Voltar à página 1 da Gazeta':`Ir para a página ${pearlPage+2} da Gazeta`);
+}
+async function loadPosts(){
+ if(!configured)return;
+ const selected=postsLoaded?currentPostId():null;
+ try{const posts=await request('/rest/v1/rpc/coffee_posts_read',{});if(!Array.isArray(posts))throw Error('Resposta inválida da Gazeta.');
+ if(posts.length){postsLoaded=true;pearlPages=posts;pearlPage=Math.max(0,posts.findIndex(p=>p.id===selected));renderPost();}}
+ catch(e){$('#comments-status').textContent='Não foi possível atualizar as publicações: '+e.message;}
+}
+$('#paper-turn').onclick=()=>{pearlPage=(pearlPage+1)%pearlPages.length;$('#comment-form').reset();renderPost();loadComments();};
 
 function renderPhotoPreview(){const img=avatar($('#profile').elements.icon.value,profilePhoto);img.alt='Sua foto de perfil';$('#photo-preview').replaceChildren(img);}
 $('#profile').elements.icon.addEventListener('change',renderPhotoPreview);
@@ -126,7 +143,7 @@ $('#submit-buy').elements.quantity.addEventListener('input',()=>{const n=Number(
 function syncCommentAccess(){if(!$('#comment-form'))return;$('#comment-form').hidden=!token;$('#comments-login').hidden=Boolean(token);}
 let commentsVersion=0,commentAttempt=null;
 async function loadComments(){
- const version=++commentsVersion,page='gazeta-00'+(pearlPage+1);syncCommentAccess();$('#comments-list').replaceChildren();$('#comments-status').textContent='Carregando comentários…';
+ const version=++commentsVersion,page=currentPostId();syncCommentAccess();$('#comments-list').replaceChildren();$('#comments-status').textContent='Carregando comentários…';
  if(!configured){$('#comments-status').textContent='Comentários disponíveis após conectar o banco.';return;}
  try{
  const comments=await request('/rest/v1/rpc/coffee_comments_read',{p_page:page});if(version!==commentsVersion)return;
@@ -135,10 +152,46 @@ async function loadComments(){
  if(c.can_delete){const remove=el('button','Excluir');remove.type='button';remove.onclick=()=>action(async()=>{if(!confirm('Excluir este comentário?'))return;await request('/rest/v1/rpc/coffee_comment_delete',{p_id:c.id});await loadComments();});row.append(remove);}
  $('#comments-list').append(row);}
  if(!comments?.length)$('#comments-list').append(el('p','Nenhum comentário. Quem dá o primeiro pitaco?'));
- }catch(e){if(version===commentsVersion)$('#comments-status').textContent='Não foi possível carregar os comentários. Tente atualizar.';}
+ }catch(e){if(version===commentsVersion)$('#comments-status').textContent='Não foi possível carregar os comentários: '+e.message;}
 }
 $('#comments-refresh').onclick=()=>loadComments();
-$('#comment-form').onsubmit=e=>{e.preventDefault();action(async()=>{const form=e.target,body=form.elements.body.value.trim(),page='gazeta-00'+(pearlPage+1);if(!body)throw Error('Escreva um comentário.');
+$('#comment-form').onsubmit=e=>{e.preventDefault();action(async()=>{const form=e.target,body=form.elements.body.value.trim(),page=currentPostId();if(!body)throw Error('Escreva um comentário.');
  const signature=JSON.stringify([page,body]);if(!commentAttempt||commentAttempt.signature!==signature)commentAttempt={signature,id:crypto.randomUUID()};
- await request('/rest/v1/rpc/coffee_comment_add',{p_id:commentAttempt.id,p_page:page,p_body:body});commentAttempt=null;form.reset();await loadComments();status('Comentário publicado!');});};
+ try{await request('/rest/v1/rpc/coffee_comment_add',{p_id:commentAttempt.id,p_page:page,p_body:body});commentAttempt=null;form.reset();await loadComments();$('#comments-status').textContent='Comentário publicado!';}catch(e){$('#comments-status').textContent='Não foi possível publicar: '+e.message;syncCommentAccess();}});};
 if(!configured)loadComments();
+
+$('#comment-signin').onclick=()=>{showPage(true);$('#admin').scrollIntoView({behavior:'smooth'});};
+function validPostImage(src){return typeof src==='string'&&/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(src);}
+let postImage=null,postAttempt=null;
+const postForm=$('#post-form');
+// Local calendar date, not UTC, for the publication date input.
+const localNow=new Date();postForm.elements.date.value=[localNow.getFullYear(),String(localNow.getMonth()+1).padStart(2,'0'),String(localNow.getDate()).padStart(2,'0')].join('-');
+function previewPost(){
+ $('#post-preview h3').textContent=postForm.elements.title.value||'Título da publicação';
+ $('#post-preview blockquote').textContent=postForm.elements.quote.value||'Sua próxima pérola aparece aqui.';
+ $('#post-preview .preview-author').textContent='— '+(postForm.elements.author.value||'Autor');
+ $('#post-preview time').textContent=postForm.elements.date.value?new Date(postForm.elements.date.value+'T12:00:00').toLocaleDateString('pt-BR'):'';
+ $('#post-preview .preview-body').textContent=postForm.elements.body.value;
+ const img=$('#post-preview img');img.hidden=!postImage;if(postImage)img.src=postImage;else img.removeAttribute('src');
+ $('#post-preview figcaption').textContent=postForm.elements.caption.value;
+}
+postForm.addEventListener('input',previewPost);
+$('#post-remove-image').onclick=()=>{postImage=null;$('#post-image').value='';previewPost();};
+$('#post-image').onchange=()=>action(async()=>{
+ const file=$('#post-image').files[0];if(!file)return;
+ try{
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('Escolha JPG, PNG ou WebP de até 5 MB.');
+ const bitmap=await createImageBitmap(file),scale=Math.min(1,1000/Math.max(bitmap.width,bitmap.height));
+ const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+ const result=canvas.toDataURL('image/jpeg',.8);if(result.length>1200000)throw Error('Imagem muito detalhada. Escolha uma menor.');postImage=result;previewPost();$('#post-status').textContent='Imagem pronta para a publicação.';
+ }catch(e){$('#post-image').value='';$('#post-status').textContent=e.message;}
+});
+postForm.onsubmit=e=>{e.preventDefault();action(async()=>{
+ if(!data?.admin)throw Error('Somente o administrador pode publicar.');
+ const payload={p_title:postForm.elements.title.value.trim(),p_quote:postForm.elements.quote.value.trim(),p_author:postForm.elements.author.value.trim(),p_date:postForm.elements.date.value,p_body:postForm.elements.body.value.trim(),p_image:postImage,p_caption:postForm.elements.caption.value.trim()};
+ if(!payload.p_title||!payload.p_quote||!payload.p_author)throw Error('Preencha título, frase e autor.');
+ const signature=JSON.stringify(payload);if(!postAttempt||postAttempt.signature!==signature)postAttempt={signature,id:crypto.randomUUID()};
+ try{await request('/rest/v1/rpc/coffee_post_publish',{p_id:postAttempt.id,...payload});await loadPosts();pearlPage=Math.max(0,pearlPages.findIndex(p=>p.id===postAttempt.id));renderPost();await loadComments();postAttempt=null;$('#post-status').textContent='Publicado! A nova página já está na Gazeta.';}
+ catch(e){$('#post-status').textContent='Não foi possível publicar: '+e.message;}
+});};
+previewPost();

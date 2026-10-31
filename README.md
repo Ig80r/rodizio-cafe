@@ -26,7 +26,7 @@ on conflict do nothing;
 
 A fila e o histórico são públicos; perfis e solicitações exigem autenticação. As tabelas privadas têm RLS habilitada e não concedem acesso direto ao navegador. Cada operação valida a permissão no servidor. Compras e avanço da fila são atômicos; versões previnem sobrescritas concorrentes e IDs previnem registros duplicados em retentativas. Ao aprovar uma compra, a fila avança pela quantidade de cotas, inclusive em compras fora da vez, preservando a regra original do site.
 
-A sessão fica somente na memória da página: recarregar exige novo login. Ao expirar, entre novamente. As fontes Google são opcionais, com alternativas locais. Sem configuração, o site mostra uma demonstração sem salvar alterações.
+A sessão fica no armazenamento da aba (`sessionStorage`), com prazo de expiração: recarregar a mesma aba mantém o login enquanto válido. Ao expirar ou sair, entre novamente. As fontes Google são opcionais, com alternativas locais. Sem configuração, o site mostra uma demonstração sem salvar alterações.
 
 ## Validação
 
@@ -59,3 +59,21 @@ O cadastro envia o nome como metadado; um trigger cria o perfil automaticamente.
 Cafeteiros aprovados solicitam entre 1 e 100 cotas de 250 g. A compra e a mudança de fila continuam dependendo da confirmação administrativa. As solicitações aparecem no painel do administrador.
 
 Cada página da Gazeta tem um ID estável (`gazeta-001`, `gazeta-002`). Comentários são públicos, mas somente contas autenticadas com perfil podem publicar (até 500 caracteres). O autor e os administradores podem excluir. Cada leitura mostra os 100 comentários mais recentes, em ordem cronológica; o botão Atualizar busca novas mensagens. Os textos são renderizados com `textContent`, sem HTML. As políticas e RPCs verificam identidade no servidor. O teste de navegador usa API simulada para conferir cadastro com nome, upload de foto, três cotas (750 g), isolamento dos comentários por página e exclusão. A migração precisa ser aplicada e validada no Supabase real.
+
+## Correção 003 — salvar participantes
+
+Se salvar a fila retornar `column reference "p" is ambiguous`, execute `supabase/003_fix_manage_ambiguity.sql` no SQL Editor. A correção substitui apenas `coffee_manage`, renomeia a variável local para `v_participant` e qualifica os valores JSON dos aliases SQL. Não altera dados, assinatura, permissões ou validações da fila. O `schema.sql` também inclui a correção para instalações novas.
+
+## Correção 004 — proteção de UPDATE
+
+Se aparecer `UPDATE requires a WHERE clause`, execute `supabase/004_fix_state_updates.sql` inteiro no SQL Editor. A correção inclui a 003 e adiciona `WHERE id = true` às atualizações do estado em `coffee_manage`, `coffee_member_approve` e `record_buy`. Preserva dados, assinaturas e permissões existentes. Não é necessário desativar a proteção do banco.
+
+## Gazeta administrável — atualização 005
+
+Execute `supabase/005_gazette_editor.sql` depois da atualização 002 (mantenha também as correções 003/004 já aplicadas). O script cria a tabela privada de publicações, conserva os IDs `gazeta-001` e `gazeta-002` para preservar os comentários existentes e libera páginas novas. As RPCs de publicação exigem administrador no servidor; a leitura é pública. Nenhuma função da fila é substituída.
+
+No painel do administrador, **Publicar na Gazeta** permite título, frase, autor, data, texto complementar, imagem e legenda. A prévia é local e atualiza durante a digitação; só o botão Publicar grava e torna a página pública. JPG/PNG/WebP de até 5 MB são convertidos em JPEG com no máximo 1000 pixels no maior lado e 1,2 milhão de caracteres no banco. A imagem publicada mantém as cores originais. Esta versão cria publicações; não edita as já publicadas. Uma publicação usa ID estável e retentativas não geram duplicatas.
+
+Comentários usam o ID da publicação, nunca o índice da página. Erros aparecem junto do formulário e o texto é preservado para nova tentativa. Contas antigas sem perfil recebem um perfil básico ao comentar, usando nome dos metadados quando disponível; podem ajustar o nome depois. O botão Entrar para comentar abre a área de acesso. A sessão agora sobrevive ao recarregamento da mesma aba até expirar.
+
+Validação: o teste de navegador usa API simulada para conferir erro e retentativa de comentário, texto preservado, publicação com imagem, prévia sem gravação, comentários após inserir uma nova página, responsividade do editor e sessão após recarregar. O SQL ainda deve ser aplicado e validado no Supabase real.
