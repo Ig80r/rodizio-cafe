@@ -87,3 +87,27 @@ O envio agora usa `coffee_comment_publish`, que retorna o comentário realmente 
 A sessão atual usa access token e refresh token persistidos em `localStorage`, com renovação antes do vencimento e uma nova tentativa em caso de 401. Falhas temporárias de rede não apagam o login; um refresh token revogado ou inválido exige nova entrada. Ao sair, o armazenamento é removido. Faça login novamente uma vez após atualizar para registrar o refresh token que as versões anteriores não guardavam. [Sessões do Supabase](https://supabase.com/docs/guides/auth/sessions).
 
 Os testes com API simulada cobrem envio confirmado seguido de falha na leitura, comentários por publicação, arquivo por período, renovação de token vencido ao recarregar, navegação entre páginas e manutenção do login em outra aba. A migração precisa ser executada e validada no banco real.
+
+## Funções não encontradas na API — sincronização 007
+
+Se salvar foto, publicar ou comentar retornar “Could not find the function ... in the schema cache”, abra o mesmo projeto Supabase de `config.js` e execute `supabase/007_sync_backend.sql` inteiro como postgres no SQL Editor. Ele reúne as atualizações 002, 004, 005 e 006 em uma única transação, com validação da instalação inicial, sem reinstalar `schema.sql`. Os dados existentes são preservados. Se qualquer etapa falhar, a transação não é confirmada; corrija o erro antes de continuar.
+
+Depois execute `supabase/verify_backend.sql`: as três linhas devem mostrar `instalada = true` e `acesso_autenticado = true`. O script solicita a atualização do cache da API. Se as funções estiverem instaladas mas o site ainda não encontrá-las, confira se o domínio de `config.js` aponta para esse mesmo projeto e se `public` está entre os esquemas expostos da Data API. [Atualizar cache PostgREST](https://supabase.com/kb/troubleshooting/refresh-postgrest-schema).
+
+## Ajustes de leitura e frase do dia
+
+O editor identifica explicitamente o campo “Frase do dia”, separado da matéria completa, e mostra o destaque na prévia. Os títulos do site usam IBM Plex Mono (alternativa local: Consolas/monospace), e o nome da Gazeta usa Playfair Display (alternativa local: Georgia). Texto e números de formulários continuam em fonte de leitura. Esta alteração não exige SQL.
+
+O cabeçalho da Gazeta agora usa Grenze Gotisch, mantendo a aparência gótica de jornal antigo com traços mais abertos; Playfair Display/Georgia ficam como alternativas. O corpo da matéria permanece serifado e legível.
+
+## Insígnia de autor e autoria das matérias — atualização 008
+
+Depois da sincronização 007 (ou das atualizações 002 a 006), execute `supabase/008_authors.sql` no SQL Editor. Ela cria a lista privada de autores e registra `created_by` em novas matérias. O cliente não escolhe o dono: a função usa `auth.uid()` no servidor. Matérias antigas continuam sem dono atribuído, evitando conceder direitos a uma pessoa sem evidência de autoria.
+
+No painel administrativo, **Autores da Gazeta** lista os perfis e permite conceder ou retirar a insígnia. Quem recebe a insígnia encontra o editor e **Minhas matérias** na área dos cafeteiros; não recebe controles administrativos. A insígnia aparece no próprio perfil, na fila para membros vinculados e na identificação de quem publicou uma matéria. O nome atribuído à frase é independente da conta que publicou.
+
+Autores podem publicar e excluir apenas matérias criadas pela própria conta. A exclusão retira a matéria do público (`published = false`) e preserva os comentários no banco. O administrador mantém permissão de moderação no servidor. A retirada da insígnia impede imediatamente novas publicações e exclusões, mesmo se a interface de uma aba antiga ainda estiver aberta. A nova função `coffee_author_set` valida o administrador, e `coffee_post_delete` valida a permissão e a conta dona da publicação. As tabelas privadas não concedem acesso direto ao navegador.
+
+Os testes de navegador usam API simulada e cobrem concessão, publicação com outro nome atribuído à frase, exclusão própria, tentativa de exclusão de matéria alheia e revogação. As regras SQL precisam ser aplicadas e verificadas no Supabase real.
+
+O início usa Jersey 10 nos títulos grandes, mantendo pixels definidos com leitura mais clara. A Gazeta mantém Grenze Gotisch com ornamentos discretos e traços mais fortes; formulários e matérias continuam em fontes de leitura.

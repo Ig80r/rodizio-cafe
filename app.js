@@ -27,7 +27,7 @@ function authView(){
  $('#login').hidden=Boolean(token)||authMode!=='login';
  $('#signup').hidden=Boolean(token)||authMode!=='signup';
  $('.auth-tabs').hidden=Boolean(token);
- $('#logout').hidden=!token;syncCommentAccess();
+ $('#logout').hidden=!token;syncCommentAccess();if(!token){$('#gazette-editor').hidden=true;$('#my-publications').hidden=true;$('#my-author-badge').hidden=true;}
  for(const mode of ['login','signup']){const tab=$('#'+mode+'-tab');tab.classList.toggle('selected',mode===authMode);tab.setAttribute('aria-pressed',String(mode===authMode));}
 }
 function showPage(member){
@@ -57,9 +57,9 @@ async function request(path,body){
 async function action(fn){if(busy)return;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn();}catch(e){status(e.message);}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}
 async function load(){if(!configured)return;const fresh=await request('/rest/v1/rpc/coffee_read',{});data=fresh;account=token?await request('/rest/v1/rpc/coffee_account',{}):null;draft=structuredClone(data.state.participants);status('');render();$('#updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');await loadPosts();await loadComments();}
 function ordered(){return data.state.queue.map(id=>data.state.participants.find(p=>p.id===id)).filter(Boolean);}
-function render(){syncDraft();const queue=ordered(),h=data.history;$('#next').replaceChildren(...(queue[0]?[avatar(queue[0].icon,queue[0].photo),el('span',queue[0].name)]:[el('span','Garrafa em modo soneca')]));$('#people').textContent=queue.length;const total=h.reduce((s,x)=>s+x.quotas,0);$('#quotas').textContent=total;$('#weight').textContent=(total*250/1000).toLocaleString('pt-BR')+' kg';$('#queue').replaceChildren();queue.forEach((p,i)=>{const card=el('article',undefined,'person');card.append(avatar(p.icon,p.photo),el('b',p.name),el('small',i===0?'Sua missão, cafeteiro!':`${i+1}º na fila`));$('#queue').append(card);});if(!queue.length)$('#queue').append(el('p','Nenhum participante ativo.'));
+function render(){syncDraft();const queue=ordered(),h=data.history;$('#next').replaceChildren(...(queue[0]?[avatar(queue[0].icon,queue[0].photo),el('span',queue[0].name)]:[el('span','Garrafa em modo soneca')]));$('#people').textContent=queue.length;const total=h.reduce((s,x)=>s+x.quotas,0);$('#quotas').textContent=total;$('#weight').textContent=(total*250/1000).toLocaleString('pt-BR')+' kg';$('#queue').replaceChildren();queue.forEach((p,i)=>{const card=el('article',undefined,'person');card.append(avatar(p.icon,p.photo),el('b',p.name),el('small',i===0?'Sua missão, cafeteiro!':`${i+1}º na fila`));if(p.is_author)card.append(authorBadge());$('#queue').append(card);});if(!queue.length)$('#queue').append(el('p','Nenhum participante ativo.'));
  $('#history').replaceChildren();h.forEach(x=>{const row=el('article',undefined,'history-row'),left=el('div');left.append(personLabel(x.buyer_icon,x.buyer_name),el('small',new Date(x.created_at).toLocaleString('pt-BR')));if(x.note)left.append(el('small',x.note));row.append(left,el('strong',`${x.quotas} × 250 g = ${x.quotas*250} g`));$('#history').append(row);});if(!h.length)$('#history').append(el('p','Nenhum herói por aqui. Quem traz o primeiro pacote?'));
- $('#controls').hidden=!data.admin;$('#login').hidden=Boolean(token);$('#logout').hidden=!token;syncCommentAccess();renderAccount();renderEditors();preview();}
+ $('#controls').hidden=!data.admin;$('#login').hidden=Boolean(token);$('#logout').hidden=!token;syncCommentAccess();if(!token){$('#gazette-editor').hidden=true;$('#my-publications').hidden=true;$('#my-author-badge').hidden=true;}renderAccount();renderEditors();preview();}
 function renderEditors(){const root=$('#editors');root.replaceChildren();draft.forEach((p,i)=>{const row=el('div',undefined,'editor');const label=el('label','Nome'),input=el('input');input.value=p.name;input.maxLength=40;input.required=true;input.oninput=()=>p.name=input.value;label.append(input);const il=el('label','Ícone'),select=el('select');[...new Set([...icons,p.icon])].forEach(icon=>{const opt=el('option',iconLabels[icons.indexOf(icon)]||'Café');opt.value=icon;select.append(opt);});select.value=p.icon;select.onchange=()=>p.icon=select.value;il.append(select);const pause=el('button',p.active?'Pausar':'Ativar');pause.onclick=()=>{p.active=!p.active;renderEditors();};const up=el('button','↑');up.setAttribute('aria-label',`Mover ${p.name} para cima`);up.onclick=()=>{if(i){[draft[i-1],draft[i]]=[draft[i],draft[i-1]];renderEditors();}};const remove=el('button','Remover');remove.onclick=()=>{if(confirm(`Remover ${p.name}? O histórico será preservado.`)){draft.splice(i,1);renderEditors();}};row.append(label,il,pause,up,remove);root.append(row);});}
 function preview(){if(!data)return;const n=Number($('#purchase').elements.quantity.value),q=ordered();$('#preview').textContent=Number.isInteger(n)&&n>0&&n<=100&&q.length?`${n} cota(s) = ${n*250} g. Próxima pessoa: ${q[n%q.length].name}.`:'Informe entre 1 e 100 cotas.';}
 $('#admin-toggle').onclick=()=>showPage(true);
@@ -74,8 +74,9 @@ $('#save').onclick=()=>action(async()=>{await request('/rest/v1/rpc/coffee_manag
 function syncDraft(){const queue=data.state.queue;draft.sort((a,b)=>{const ai=queue.indexOf(a.id),bi=queue.indexOf(b.id);return (ai<0?999:ai)-(bi<0?999:bi);});}
 function renderAccount(){
  authView();$('#member').hidden=!token;
+ $('#gazette-editor').hidden=!canWrite();$('#my-publications').hidden=!canWrite();
  if(!account)return;
- const profile=account.profile;profilePhoto=profile?.photo||null;renderPhotoPreview();
+ const profile=account.profile;$('#my-author-badge').hidden=!profile?.is_author;$('#my-author-badge').replaceChildren(authorBadge());renderAuthorProfiles();profilePhoto=profile?.photo||null;renderPhotoPreview();
  $('#profile').elements.nickname.value=profile?.name||'';
  $('#profile').elements.icon.value=profile?.icon||'🦊';
  $('#member-status').textContent=profile?.participant_id?'Perfil aprovado! Você já pode enviar compras.':'Salve seu perfil e aguarde o administrador vincular sua conta a uma vaga.';
@@ -119,7 +120,8 @@ let pearlPages=[
 let pearlPage=0,postsLoaded=false;
 function currentPostId(){return pearlPages[pearlPage]?.id;}
 function renderPost(){
- const page=pearlPages[pearlPage];if(!page)return;
+ const page=pearlPages[pearlPage];if(!page){$('#post-publisher').replaceChildren();return;}
+ const publisher=$('#post-publisher');publisher.replaceChildren();if(page.publisher_name)publisher.append(el('span','Publicado por '+page.publisher_name));if(page.publisher_is_author)publisher.append(authorBadge());
  if(isGazette){const url=new URL(location.href);url.searchParams.set('post',page.id);history.replaceState(null,'',url);document.title=page.title+' • A Gazeta do LSN';}
  $('#post-title').textContent=page.title;$('#post-title').hidden=false;
  $('#pearl-page blockquote').textContent='“'+page.quote+'”';
@@ -138,7 +140,7 @@ async function loadPosts(){
  if(!configured)return;
  const selected=postsLoaded?currentPostId():new URLSearchParams(location.search).get('post');
  try{const posts=await request('/rest/v1/rpc/coffee_posts_read',{});if(!Array.isArray(posts))throw Error('Resposta inválida da Gazeta.');
- if(posts.length){postsLoaded=true;pearlPages=posts;pearlPage=Math.max(0,posts.findIndex(p=>p.id===selected));renderPost();renderArchive();}}
+ postsLoaded=true;pearlPages=posts;pearlPage=Math.max(0,posts.findIndex(p=>p.id===selected));$('.gazette-reading').hidden=!posts.length;$('#posts-status').textContent=posts.length?'':'Nenhuma matéria publicada ainda.';renderPost();renderArchive();renderMyPosts();}
  catch(e){$('#posts-status').textContent='Não foi possível atualizar as publicações: '+e.message;}
 }
 $('#paper-turn').onclick=()=>{const visible=filteredPosts(),index=visible.findIndex(p=>p.id===currentPostId());selectPost(visible[(index+1)%visible.length]?.id);};
@@ -167,7 +169,7 @@ function renderComments(comments){
 }
 async function loadComments(){
  const version=++commentsVersion,page=currentPostId();syncCommentAccess();$('#comments-status').textContent='Carregando comentários…';
- if(!configured){$('#comments-status').textContent='Comentários disponíveis após conectar o banco.';return false;}
+ if(!configured){$('#comments-status').textContent='Comentários disponíveis após conectar o banco.';return false;}if(!page){renderComments([]);$('#comments-status').textContent='';return false;}
  try{
  const comments=await request('/rest/v1/rpc/coffee_comments_read',{p_page:page});if(version!==commentsVersion)return false;
  if(!Array.isArray(comments))throw Error('Resposta inválida ao buscar os comentários.');
@@ -190,7 +192,7 @@ const postForm=$('#post-form');
 const localNow=new Date();postForm.elements.date.value=[localNow.getFullYear(),String(localNow.getMonth()+1).padStart(2,'0'),String(localNow.getDate()).padStart(2,'0')].join('-');
 function previewPost(){
  $('#post-preview h3').textContent=postForm.elements.title.value||'Título da publicação';
- $('#post-preview blockquote').textContent=postForm.elements.quote.value||'Sua próxima pérola aparece aqui.';
+ $('#post-preview blockquote').textContent=postForm.elements.quote.value?'“'+postForm.elements.quote.value+'”':'Sua frase do dia aparece aqui.';
  $('#post-preview .preview-author').textContent='— '+(postForm.elements.author.value||'Autor');
  $('#post-preview time').textContent=postForm.elements.date.value?new Date(postForm.elements.date.value+'T12:00:00').toLocaleDateString('pt-BR'):'';
  $('#post-preview .preview-body').textContent=postForm.elements.body.value;
@@ -209,9 +211,9 @@ $('#post-image').onchange=()=>action(async()=>{
  }catch(e){$('#post-image').value='';$('#post-status').textContent=e.message;}
 });
 postForm.onsubmit=e=>{e.preventDefault();action(async()=>{
- if(!data?.admin)throw Error('Somente o administrador pode publicar.');
+ if(!canWrite())throw Error('Você precisa da insígnia de autor para publicar.');
  const payload={p_title:postForm.elements.title.value.trim(),p_quote:postForm.elements.quote.value.trim(),p_author:postForm.elements.author.value.trim(),p_date:postForm.elements.date.value,p_body:postForm.elements.body.value.trim(),p_image:postImage,p_caption:postForm.elements.caption.value.trim()};
- if(!payload.p_title||!payload.p_quote||!payload.p_author)throw Error('Preencha título, frase e autor.');
+ if(!payload.p_title||!payload.p_quote||!payload.p_author)throw Error('Preencha o título, a frase do dia e o autor.');
  const signature=JSON.stringify(payload);if(!postAttempt||postAttempt.signature!==signature)postAttempt={signature,id:crypto.randomUUID()};
  try{await request('/rest/v1/rpc/coffee_post_publish',{p_id:postAttempt.id,...payload});await loadPosts();$('#archive-month').value='';$('#archive-week').value='';$('.gazette-reading').hidden=false;pearlPage=Math.max(0,pearlPages.findIndex(p=>p.id===postAttempt.id));renderPost();renderArchive();await loadComments();postAttempt=null;$('#post-status').textContent='Publicado! A nova página já está na Gazeta.';}
  catch(e){$('#post-status').textContent='Não foi possível publicar: '+e.message;}
@@ -243,3 +245,19 @@ renderArchive();showPage(false);
 if(isGazette){let polling=false;setInterval(async()=>{if(document.hidden||polling||!$('#admin').hidden)return;polling=true;try{await loadComments();}finally{polling=false;}},20000);}
 
 if(configured){action(async()=>{try{await load();}catch(e){$('#next').textContent='Vamos preparar o café?';$('#queue').replaceChildren(el('p','Não foi possível carregar a fila. Tente atualizar em instantes.'));throw e;}});}else{data={admin:false,state:{version:0,participants:icons.slice(0,7).map((icon,i)=>({id:String(i+1),name:`Pessoa ${i+1}`,icon,active:true})),queue:['1','2','3','4','5','6','7']},history:[]};draft=structuredClone(data.state.participants);render();status('Demonstração: configure config.js e execute supabase/schema.sql para conectar o banco. Nenhuma alteração é salva neste modo.');}
+
+function canWrite(){return Boolean(token&&(data?.admin||account?.can_publish));}
+function authorBadge(){return el('span','AUTOR','author-badge');}
+function renderAuthorProfiles(){
+ const root=$('#author-profiles');root.replaceChildren();if(!data?.admin)return;
+ for(const profile of account?.profiles||[]){const row=el('article',undefined,'author-profile'),info=el('div');info.append(personLabel(profile.icon,profile.name,profile.photo));if(profile.is_author)info.append(authorBadge());
+ const button=el('button',profile.is_author?'Retirar insígnia':'Conceder insígnia de autor');button.type='button';button.onclick=()=>action(async()=>{await request('/rest/v1/rpc/coffee_author_set',{p_user:profile.user_id,p_enabled:!profile.is_author});await load();status(profile.is_author?'Insígnia retirada.':'Insígnia de autor concedida!');});row.append(info,button);root.append(row);}
+ if(!root.children.length)root.append(el('p','Os perfis cadastrados aparecem aqui.'));
+}
+function renderMyPosts(){
+ const root=$('#my-posts');root.replaceChildren();$('#my-publications').hidden=!canWrite();if(!canWrite())return;
+ const mine=pearlPages.filter(p=>p.is_mine);
+ for(const post of mine){const row=el('article',undefined,'my-post-row'),info=el('div');info.append(el('strong',post.title),el('p',prettyDate(post.published_on)));
+ if(post.can_delete){const button=el('button','Excluir minha matéria');button.type='button';button.onclick=()=>action(async()=>{if(!confirm(`Excluir “${post.title}” da Gazeta?`))return;await request('/rest/v1/rpc/coffee_post_delete',{p_id:post.id});$('#archive-month').value='';$('#archive-week').value='';await loadPosts();await loadComments();status('Matéria excluída da Gazeta.');});row.append(info,button);}else row.append(info);root.append(row);}
+ if(!mine.length)root.append(el('p','Você ainda não publicou nenhuma matéria.'));
+}
