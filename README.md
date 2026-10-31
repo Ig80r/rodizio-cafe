@@ -77,3 +77,13 @@ No painel do administrador, **Publicar na Gazeta** permite título, frase, autor
 Comentários usam o ID da publicação, nunca o índice da página. Erros aparecem junto do formulário e o texto é preservado para nova tentativa. Contas antigas sem perfil recebem um perfil básico ao comentar, usando nome dos metadados quando disponível; podem ajustar o nome depois. O botão Entrar para comentar abre a área de acesso. A sessão agora sobrevive ao recarregamento da mesma aba até expirar.
 
 Validação: o teste de navegador usa API simulada para conferir erro e retentativa de comentário, texto preservado, publicação com imagem, prévia sem gravação, comentários após inserir uma nova página, responsividade do editor e sessão após recarregar. O SQL ainda deve ser aplicado e validado no Supabase real.
+
+## Página da Gazeta e sessão persistente — atualização 006
+
+Execute `supabase/006_gazette_comments.sql` após a 005. Publique também `gazeta.html` junto dos arquivos atualizados. A página inicial mostra um convite; as matérias e comentários ficam na página própria da Gazeta, com links `gazeta.html?post=ID`, filtros por mês e semanas iniciadas na segunda-feira. Os IDs das publicações e comentários continuam iguais.
+
+O envio agora usa `coffee_comment_publish`, que retorna o comentário realmente gravado na mesma transação. O frontend mostra esse registro confirmado imediatamente, preserva-o caso a leitura seguinte falhe e mantém o aviso de erro em vez de sobrescrevê-lo com sucesso. A leitura usa LEFT JOIN para não esconder comentários de perfis antigos. A conversa atualiza a cada 20 segundos enquanto a página está visível, além do botão Atualizar.
+
+A sessão atual usa access token e refresh token persistidos em `localStorage`, com renovação antes do vencimento e uma nova tentativa em caso de 401. Falhas temporárias de rede não apagam o login; um refresh token revogado ou inválido exige nova entrada. Ao sair, o armazenamento é removido. Faça login novamente uma vez após atualizar para registrar o refresh token que as versões anteriores não guardavam. [Sessões do Supabase](https://supabase.com/docs/guides/auth/sessions).
+
+Os testes com API simulada cobrem envio confirmado seguido de falha na leitura, comentários por publicação, arquivo por período, renovação de token vencido ao recarregar, navegação entre páginas e manutenção do login em outra aba. A migração precisa ser executada e validada no banco real.
