@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="description" content="Recupere seu acesso ao Café do LSN."><title>Esqueci a senha · Café do LSN</title><link rel="stylesheet" href="./style.css?v=20261113"></head>
+<body data-page="recovery"><header><a class="brand" href="./index.html"><img class="brand-logo" src="./assets/logo-lsn.svg" alt="Café do LSN" width="300" height="132"></a><nav><a href="./index.html">← Voltar ao café</a></nav></header>
+<main class="recovery-main"><span class="eyebrow">MEMÓRIA RAM LOTADA?</span><h1>Esqueceu a senha?<br><em>O café ainda não fez efeito.</em></h1><p class="hint">Acontece. Até computador precisa reiniciar.</p>
+<p id="recovery-status" role="status" aria-live="polite"></p>
+<form id="recover-request"><h2>Vamos fingir que isso nunca aconteceu.</h2><label>E-mail da sua conta<input name="email" type="email" autocomplete="email" required></label><button class="primary" type="submit">Mandar o resgate por e-mail</button><p class="hint">Confira também o spam. Às vezes ele organiza sua vida melhor que você.</p></form>
+<form id="recover-reset" hidden><h2>Senha nova. Mesma pessoa esquecida.</h2><label>Nova senha (mínimo 8 caracteres)<input name="password" type="password" minlength="8" autocomplete="new-password" required></label><label>Repita a nova senha<input name="confirmation" type="password" minlength="8" autocomplete="new-password" required></label><button class="primary" type="submit">Salvar e tentar lembrar desta vez</button></form>
+<a id="recovery-login" class="page-link" href="./index.html" hidden>Senha salva. Voltar para entrar →</a><button id="recovery-again" type="button" hidden>Pedir outro link. Desta vez eu uso.</button>
+</main><script type="module" src="./recovery.js?v=20261113"></script></body></html>

@@ -157,3 +157,16 @@ O teste de navegador com API simulada cobre resposta, resposta à resposta, canc
 O suporte foi reduzido a uma nota discreta, sem caixa destacada. O telefone fica dentro de um detalhe recolhido e não tem link de ligação. O rodapé orienta a enviar mensagem em vez de ligar.
 
 O contato do rodapé agora usa `supportEmail` em `config.js`, com link de e-mail dentro do detalhe recolhido. O número de telefone foi removido da configuração. O suporte fica ao lado de “Café do LSN / Vai um cafézin?”, inclusive no celular.
+
+## Recuperação de senha por e-mail
+
+O link “Esqueceu a senha?” aparece no login das duas páginas e abre `recuperar.html`. O usuário recebe um link pelo Supabase, define uma senha de no mínimo 8 caracteres e confirma a senha. Após a troca, entra novamente. O token de recuperação fica apenas na sessão da aba, com validade, e sai do endereço imediatamente. Ele não substitui a sessão normal da conta. Nenhuma migração SQL é necessária.
+
+Configuração no painel Supabase:
+
+1. Em **Authentication → URL Configuration**, mantenha o Site URL do site e adicione `https://ig80r.github.io/rodizio-cafe/recuperar.html` aos **Redirect URLs**. Em desenvolvimento, adicione também o endereço completo usado para `recuperar.html` (por exemplo, `http://localhost:8000/recuperar.html`).
+2. Em **Authentication → Email Templates → Reset password**, você pode usar o assunto “A senha sumiu. O café é inocente.” e colar o conteúdo de `supabase/email-recovery.html`. Preserve `{{ .ConfirmationURL }}` no link. Esse modelo é opcional; o padrão também funciona.
+3. Para envio aos membros, confira o **Custom SMTP** do projeto. O serviço padrão do Supabase restringe o envio a endereços autorizados da equipe e não atende a uma lista pública de usuários. Veja https://supabase.com/docs/guides/auth/auth-smtp.
+4. Publique os arquivos novos e atualizados. Teste com uma conta real: pedir recuperação, abrir o e-mail, alterar a senha e entrar com a nova senha. Entrega de e-mail depende das configurações e dos limites do provedor.
+
+Os testes de navegador em `tests/recovery.test.mjs` usam API simulada: envio com redirecionamento correto, resposta que não revela se existe uma conta, confirmação de senha, mínimo de 8 caracteres, persistência apenas na aba, limpeza do token, link vencido e redirecionamento de recuperação a partir da página inicial. Esses testes não verificam a entrega real do e-mail.
