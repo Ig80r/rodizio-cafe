@@ -1,4 +1,5 @@
 import {config} from './config.js';
+import {formatArticle,applyArticleStyle} from './formatting.js';
 const $=s=>document.querySelector(s);
 const isGazette=document.body.dataset.page==='gazeta';let returnToComments=false;
 const icons=['🦊','🐸','🦥','🦖','🐙','🦄','🐼','🐧','🦉','🐝'];
@@ -129,7 +130,7 @@ function renderPost(){
  const date=new Date(page.published_on+'T12:00:00').toLocaleDateString('pt-BR');
  $('.quote-credit span').textContent=date;
  $('.paper-dateline time').textContent=date;$('.paper-dateline time').dateTime=page.published_on;
- $('#post-body').textContent=page.body||'';$('#post-body').hidden=!page.body;
+ formatArticle($('#post-body'),page.body||'');applyArticleStyle($('#post-body'),page.body_align,page.body_font_size);$('#post-body').hidden=!page.body;
  const img=$('.paper-photo img');img.src=validPostImage(page.image)?page.image:'./assets/science-lab.svg';img.classList.toggle('publication-photo',validPostImage(page.image));img.alt=page.caption||page.title;
  $('.paper-photo figcaption').textContent=page.caption||'';
  const visible=filteredPosts(),position=visible.findIndex(p=>p.id===page.id);$('#paper-page-number').textContent=`Página ${position+1} de ${visible.length}`;
@@ -195,7 +196,7 @@ function previewPost(){
  $('#post-preview blockquote').textContent=postForm.elements.quote.value?'“'+postForm.elements.quote.value+'”':'Sua frase do dia aparece aqui.';
  $('#post-preview .preview-author').textContent='— '+(postForm.elements.author.value||'Autor');
  $('#post-preview time').textContent=postForm.elements.date.value?new Date(postForm.elements.date.value+'T12:00:00').toLocaleDateString('pt-BR'):'';
- $('#post-preview .preview-body').textContent=postForm.elements.body.value;
+ formatArticle($('#post-preview .preview-body'),postForm.elements.body.value);applyArticleStyle($('#post-preview .preview-body'),postForm.elements.alignment.value,Number(postForm.elements.fontSize.value));
  const img=$('#post-preview img');img.hidden=!postImage;if(postImage)img.src=postImage;else img.removeAttribute('src');
  $('#post-preview figcaption').textContent=postForm.elements.caption.value;
 }
@@ -212,10 +213,10 @@ $('#post-image').onchange=()=>action(async()=>{
 });
 postForm.onsubmit=e=>{e.preventDefault();action(async()=>{
  if(!canWrite())throw Error('Você precisa da insígnia de autor para publicar.');
- const payload={p_title:postForm.elements.title.value.trim(),p_quote:postForm.elements.quote.value.trim(),p_author:postForm.elements.author.value.trim(),p_date:postForm.elements.date.value,p_body:postForm.elements.body.value.trim(),p_image:postImage,p_caption:postForm.elements.caption.value.trim()};
+ const payload={p_title:postForm.elements.title.value.trim(),p_quote:postForm.elements.quote.value.trim(),p_author:postForm.elements.author.value.trim(),p_date:postForm.elements.date.value,p_body:postForm.elements.body.value.trim(),p_image:postImage,p_caption:postForm.elements.caption.value.trim(),p_align:postForm.elements.alignment.value,p_font_size:Number(postForm.elements.fontSize.value)};
  if(!payload.p_title||!payload.p_quote||!payload.p_author)throw Error('Preencha o título, a frase do dia e o autor.');
  const signature=JSON.stringify(payload);if(!postAttempt||postAttempt.signature!==signature)postAttempt={signature,id:crypto.randomUUID()};
- try{await request('/rest/v1/rpc/coffee_post_publish',{p_id:postAttempt.id,...payload});await loadPosts();$('#archive-month').value='';$('#archive-week').value='';$('.gazette-reading').hidden=false;pearlPage=Math.max(0,pearlPages.findIndex(p=>p.id===postAttempt.id));renderPost();renderArchive();await loadComments();postAttempt=null;$('#post-status').textContent='Publicado! A nova página já está na Gazeta.';}
+ try{await request('/rest/v1/rpc/coffee_post_publish_formatted',{p_id:postAttempt.id,...payload});await loadPosts();$('#archive-month').value='';$('#archive-week').value='';$('.gazette-reading').hidden=false;pearlPage=Math.max(0,pearlPages.findIndex(p=>p.id===postAttempt.id));renderPost();renderArchive();await loadComments();postAttempt=null;$('#post-status').textContent='Publicado! A nova página já está na Gazeta.';}
  catch(e){$('#post-status').textContent='Não foi possível publicar: '+e.message;}
 });};
 previewPost();
@@ -261,3 +262,16 @@ function renderMyPosts(){
  if(post.can_delete){const button=el('button','Excluir minha matéria');button.type='button';button.onclick=()=>action(async()=>{if(!confirm(`Excluir “${post.title}” da Gazeta?`))return;await request('/rest/v1/rpc/coffee_post_delete',{p_id:post.id});$('#archive-month').value='';$('#archive-week').value='';await loadPosts();await loadComments();status('Matéria excluída da Gazeta.');});row.append(info,button);}else row.append(info);root.append(row);}
  if(!mine.length)root.append(el('p','Você ainda não publicou nenhuma matéria.'));
 }
+
+for(const button of document.querySelectorAll('[data-format]'))button.onclick=()=>{
+ const input=postForm.elements.body,start=input.selectionStart,end=input.selectionEnd,selected=input.value.slice(start,end),mode=button.dataset.format;
+ let value,innerStart;
+ if(mode==='link'){
+  const address=window.prompt('Endereço do link (https://…):','https://');if(address===null)return;
+  try{const url=new URL(address.trim());if(!['https:','http:'].includes(url.protocol))throw Error();value='['+(selected||'Texto do link')+']('+url.href+')';innerStart=1;}
+  catch{$('#post-status').textContent='Informe um endereço válido começando com https:// ou http://.';return;}
+ }else if(mode==='unordered'||mode==='ordered'){value=(selected||'Item da lista').split('\n').map((line,i)=>(mode==='unordered'?'- ':`${i+1}. `)+line).join('\n');innerStart=mode==='unordered'?2:3;
+ }else{const marker=mode==='bold'?'**':mode==='underline'?'__':'*';value=marker+(selected||'Seu texto')+marker;innerStart=marker.length;}
+ if(input.value.length-(end-start)+value.length>input.maxLength){$('#post-status').textContent='A matéria atingiu o limite de caracteres.';return;}
+ input.setRangeText(value,start,end,'end');input.focus();if(!selected)input.setSelectionRange(start+innerStart,start+innerStart+(mode==='link'?'Texto do link'.length:mode==='unordered'||mode==='ordered'?'Item da lista'.length:'Seu texto'.length));input.dispatchEvent(new Event('input',{bubbles:true}));
+};

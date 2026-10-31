@@ -111,3 +111,11 @@ Autores podem publicar e excluir apenas matérias criadas pela própria conta. A
 Os testes de navegador usam API simulada e cobrem concessão, publicação com outro nome atribuído à frase, exclusão própria, tentativa de exclusão de matéria alheia e revogação. As regras SQL precisam ser aplicadas e verificadas no Supabase real.
 
 O início usa Jersey 10 nos títulos grandes, mantendo pixels definidos com leitura mais clara. A Gazeta mantém Grenze Gotisch com ornamentos discretos e traços mais fortes; formulários e matérias continuam em fontes de leitura.
+
+## Formatação de matérias — atualização 009
+
+Execute `supabase/009_article_formatting.sql` depois da 008 e publique também o novo módulo `formatting.js`. No editor, selecione o trecho e use Negrito, Itálico, Sublinhar ou Link. Os botões de lista criam itens com marcadores ou números. Alinhamento (esquerda, centro, direita, justificado) e tamanho (14, 16, 18, 20, 22 ou 24 px) aplicam-se ao corpo inteiro da matéria e aparecem na prévia.
+
+A formatação de trechos fica em marcações simples (`**negrito**`, `*itálico*`, `__sublinhado__`, `[texto](https://endereco)`, linhas `- item` ou `1. item`). O módulo transforma apenas essas marcações em nós DOM; HTML digitado é texto literal, e links só aceitam HTTP/HTTPS. Links abrem em outra aba com `noopener noreferrer`. Comentários permanecem em texto simples.
+
+O novo endpoint `coffee_post_publish_formatted` reaproveita as permissões e a autoria da 008, valida alinhamento/tamanho e grava tudo na mesma transação. As matérias anteriores recebem alinhamento à esquerda e tamanho 18 px. O teste de navegador cobre os botões, estilo computado da prévia e da publicação, HTML literal e links rejeitados. SQL ainda precisa ser aplicado no Supabase real.
