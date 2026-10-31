@@ -143,3 +143,13 @@ Na área administrativa, **Quem pode comentar na Gazeta** lista os perfis. Cliqu
 A função privada `can_comment` verifica a autorização no servidor. `coffee_comment_add` valida essa regra; `coffee_comment_publish` chama a mesma função, portanto os dois endpoints ficam protegidos. Só o administrador pode chamar `coffee_comment_permission_set`. A tabela privada tem RLS e não concede acesso direto ao navegador. O formulário fica oculto para contas sem autorização e mostra um aviso.
 
 Testes com API simulada cobrem bloqueio nos dois endpoints, inclusive para autores sem vaga, concessão e retirada pelo painel, e comentário autorizado sem participação na fila. O SQL precisa ser aplicado e validado no Supabase real.
+
+## Respostas encadeadas — atualização 012
+
+Execute `supabase/012_comment_threads.sql` depois da 011. Comentários existentes são raízes (`parent_id` nulo). Cada comentário e resposta oferece Responder para contas autorizadas; o formulário mostra o destinatário e permite cancelar. Respostas recebem o ID do comentário-pai, sempre na mesma matéria. Novos comentários na matéria não herdam uma resposta selecionada em outra página. Em celulares, o recuo visual é limitado, mas o vínculo e as respostas continuam funcionando em qualquer nível.
+
+A função `coffee_comment_reply` exige a autorização da 011, valida o comentário original na mesma publicação, impede autorresposta circular, reaproveitamento de IDs para trocar parentesco e resposta a comentários removidos. Ela retorna o registro realmente salvo. O cliente não ganha acesso direto às tabelas. A leitura carrega as 100 conversas principais mais recentes e todas as respostas dessas conversas. A leitura pública e as insígnias são mantidas.
+
+Excluir um comentário remove seu texto e mantém um marcador, preservando as respostas de outras pessoas. Autor e administrador mantêm a permissão de excluir somente nos casos já previstos. Comentários antigos e páginas são preservados.
+
+O teste de navegador com API simulada cobre resposta, resposta à resposta, cancelamento, exclusão sem remover descendentes, bloqueio de contas não autorizadas e layout em celular. A migração ainda precisa ser aplicada e validada no Supabase real.
