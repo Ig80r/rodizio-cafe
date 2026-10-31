@@ -155,3 +155,11 @@ body[data-page=cafe] .intro h1{font-size:clamp(42px,5vw,66px);line-height:1.08;t
 @media(max-width:500px){.article-style-controls{grid-template-columns:1fr}.format-toolbar button{flex-grow:1}}
 
 #post-preview .preview-body p,#post-preview .preview-body li{font:inherit;line-height:inherit}
+
+/* Original Café do LSN insignias: cup shield / quill and newspaper. */
+.role-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;min-height:28px;border:1px solid;font:700 10px/1.3 'DM Sans',Arial,sans-serif;letter-spacing:.8px;vertical-align:middle;white-space:nowrap}
+.role-badge img{display:block;width:20px;height:22px;object-fit:contain;image-rendering:pixelated;flex-shrink:0}
+.role-badge.admin-badge{background:#443323;border-color:#d1a75f;color:#ffe0a1}.role-badge.author-badge{background:#273e36;border-color:#86b9a5;color:#d0efdf}.role-badge:before{content:none}
+.person>.role-badge{margin:10px 5px 0 0}#my-author-badge{display:flex;flex-wrap:wrap;gap:8px}.person-label{flex-wrap:wrap}.person-label .role-badge{margin-left:3px;font-size:9px}
+#post-publisher .admin-badge{background:#e8d2a3;color:#65451d;border-color:#a37e40}#post-publisher .author-badge{background:#d1dfc5;color:#315d4e;border-color:#779984}
+@media(max-width:750px){.role-badge{padding:3px 6px;font-size:9px}.role-badge img{width:18px;height:20px}#post-publisher{flex-wrap:wrap}}

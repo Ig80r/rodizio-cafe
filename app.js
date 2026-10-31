@@ -10,7 +10,7 @@ const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefine
 const spriteNames=['raposa','carcara','sagui','tatu-peba','prea','moco','gato-do-mato','mao-pelada','coruja-buraqueira','bem-te-vi'];
 const iconLabels=['Raposa', 'Carcará', 'Sagui-de-tufo-branco', 'Tatu-peba', 'Preá', 'Mocó', 'Gato-do-mato', 'Mão-pelada', 'Coruja-buraqueira', 'Bem-te-vi'];
 function avatar(icon,photo=null){const index=icons.indexOf(icon),img=el('img',undefined,'avatar');img.src='./assets/'+(spriteNames[index]||'cup')+'.svg';if(photo&&/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(photo)){img.src=photo;img.classList.add('profile-picture');}img.onerror=()=>{img.onerror=null;img.src='./assets/'+(spriteNames[index]||'cup')+'.svg';img.classList.remove('profile-picture');};img.alt=iconLabels[index]||'Café';img.width=42;img.height=42;return img;}
-function personLabel(icon,name,photo=null){const label=el('b',undefined,'person-label');label.append(avatar(icon,photo),el('span',name));return label;}
+function personLabel(icon,name,photo=null,roles=null){const label=el('b',undefined,'person-label');label.append(avatar(icon,photo),el('span',name));if(roles)appendRoleBadges(label,roles);return label;}
 let profilePhoto=null;
 let authMode='login';
 function readSession(){try{const raw=localStorage.getItem('coffee-session-v2')||sessionStorage.getItem('coffee-session');const session=JSON.parse(raw);if(session?.token&&(session.refreshToken||session.expiresAt>Date.now()))return session;}catch{}return null;}
@@ -58,7 +58,7 @@ async function request(path,body){
 async function action(fn){if(busy)return;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn();}catch(e){status(e.message);}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}
 async function load(){if(!configured)return;const fresh=await request('/rest/v1/rpc/coffee_read',{});data=fresh;account=token?await request('/rest/v1/rpc/coffee_account',{}):null;draft=structuredClone(data.state.participants);status('');render();$('#updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');await loadPosts();await loadComments();}
 function ordered(){return data.state.queue.map(id=>data.state.participants.find(p=>p.id===id)).filter(Boolean);}
-function render(){syncDraft();const queue=ordered(),h=data.history;$('#next').replaceChildren(...(queue[0]?[avatar(queue[0].icon,queue[0].photo),el('span',queue[0].name)]:[el('span','Garrafa em modo soneca')]));$('#people').textContent=queue.length;const total=h.reduce((s,x)=>s+x.quotas,0);$('#quotas').textContent=total;$('#weight').textContent=(total*250/1000).toLocaleString('pt-BR')+' kg';$('#queue').replaceChildren();queue.forEach((p,i)=>{const card=el('article',undefined,'person');card.append(avatar(p.icon,p.photo),el('b',p.name),el('small',i===0?'Sua missão, cafeteiro!':`${i+1}º na fila`));if(p.is_author)card.append(authorBadge());$('#queue').append(card);});if(!queue.length)$('#queue').append(el('p','Nenhum participante ativo.'));
+function render(){syncDraft();const queue=ordered(),h=data.history;$('#next').replaceChildren(...(queue[0]?[avatar(queue[0].icon,queue[0].photo),el('span',queue[0].name)]:[el('span','Garrafa em modo soneca')]));$('#people').textContent=queue.length;const total=h.reduce((s,x)=>s+x.quotas,0);$('#quotas').textContent=total;$('#weight').textContent=(total*250/1000).toLocaleString('pt-BR')+' kg';$('#queue').replaceChildren();queue.forEach((p,i)=>{const card=el('article',undefined,'person');card.append(avatar(p.icon,p.photo),el('b',p.name),el('small',i===0?'Sua missão, cafeteiro!':`${i+1}º na fila`));appendRoleBadges(card,p);$('#queue').append(card);});if(!queue.length)$('#queue').append(el('p','Nenhum participante ativo.'));
  $('#history').replaceChildren();h.forEach(x=>{const row=el('article',undefined,'history-row'),left=el('div');left.append(personLabel(x.buyer_icon,x.buyer_name),el('small',new Date(x.created_at).toLocaleString('pt-BR')));if(x.note)left.append(el('small',x.note));row.append(left,el('strong',`${x.quotas} × 250 g = ${x.quotas*250} g`));$('#history').append(row);});if(!h.length)$('#history').append(el('p','Nenhum herói por aqui. Quem traz o primeiro pacote?'));
  $('#controls').hidden=!data.admin;$('#login').hidden=Boolean(token);$('#logout').hidden=!token;syncCommentAccess();if(!token){$('#gazette-editor').hidden=true;$('#my-publications').hidden=true;$('#my-author-badge').hidden=true;}renderAccount();renderEditors();preview();}
 function renderEditors(){const root=$('#editors');root.replaceChildren();draft.forEach((p,i)=>{const row=el('div',undefined,'editor');const label=el('label','Nome'),input=el('input');input.value=p.name;input.maxLength=40;input.required=true;input.oninput=()=>p.name=input.value;label.append(input);const il=el('label','Ícone'),select=el('select');[...new Set([...icons,p.icon])].forEach(icon=>{const opt=el('option',iconLabels[icons.indexOf(icon)]||'Café');opt.value=icon;select.append(opt);});select.value=p.icon;select.onchange=()=>p.icon=select.value;il.append(select);const pause=el('button',p.active?'Pausar':'Ativar');pause.onclick=()=>{p.active=!p.active;renderEditors();};const up=el('button','↑');up.setAttribute('aria-label',`Mover ${p.name} para cima`);up.onclick=()=>{if(i){[draft[i-1],draft[i]]=[draft[i],draft[i-1]];renderEditors();}};const remove=el('button','Remover');remove.onclick=()=>{if(confirm(`Remover ${p.name}? O histórico será preservado.`)){draft.splice(i,1);renderEditors();}};row.append(label,il,pause,up,remove);root.append(row);});}
@@ -77,7 +77,7 @@ function renderAccount(){
  authView();$('#member').hidden=!token;
  $('#gazette-editor').hidden=!canWrite();$('#my-publications').hidden=!canWrite();
  if(!account)return;
- const profile=account.profile;$('#my-author-badge').hidden=!profile?.is_author;$('#my-author-badge').replaceChildren(authorBadge());renderAuthorProfiles();profilePhoto=profile?.photo||null;renderPhotoPreview();
+ const profile=account.profile;$('#my-author-badge').hidden=!(profile?.is_author||data?.admin);$('#my-author-badge').replaceChildren();appendRoleBadges($('#my-author-badge'),{is_author:profile?.is_author,is_admin:data?.admin});renderAuthorProfiles();profilePhoto=profile?.photo||null;renderPhotoPreview();
  $('#profile').elements.nickname.value=profile?.name||'';
  $('#profile').elements.icon.value=profile?.icon||'🦊';
  $('#member-status').textContent=profile?.participant_id?'Perfil aprovado! Você já pode enviar compras.':'Salve seu perfil e aguarde o administrador vincular sua conta a uma vaga.';
@@ -122,7 +122,7 @@ let pearlPage=0,postsLoaded=false;
 function currentPostId(){return pearlPages[pearlPage]?.id;}
 function renderPost(){
  const page=pearlPages[pearlPage];if(!page){$('#post-publisher').replaceChildren();return;}
- const publisher=$('#post-publisher');publisher.replaceChildren();if(page.publisher_name)publisher.append(el('span','Publicado por '+page.publisher_name));if(page.publisher_is_author)publisher.append(authorBadge());
+ const publisher=$('#post-publisher');publisher.replaceChildren();if(page.publisher_name)publisher.append(el('span','Publicado por '+page.publisher_name));appendRoleBadges(publisher,{is_author:page.publisher_is_author,is_admin:page.publisher_is_admin});
  if(isGazette){const url=new URL(location.href);url.searchParams.set('post',page.id);history.replaceState(null,'',url);document.title=page.title+' • A Gazeta do LSN';}
  $('#post-title').textContent=page.title;$('#post-title').hidden=false;
  $('#pearl-page blockquote').textContent='“'+page.quote+'”';
@@ -163,7 +163,7 @@ function syncCommentAccess(){if(!$('#comment-form'))return;$('#comment-form').hi
 let commentsVersion=0,commentAttempt=null;const confirmedComments=new Map();
 function renderComments(comments){
  $('#comments-list').replaceChildren();
- for(const c of comments){const row=el('article',undefined,'gazette-comment');row.dataset.commentId=c.id;row.append(personLabel(c.icon,c.name,c.photo),el('small',new Date(c.created_at).toLocaleString('pt-BR')),el('p',c.body));
+ for(const c of comments){const row=el('article',undefined,'gazette-comment');row.dataset.commentId=c.id;row.append(personLabel(c.icon,c.name,c.photo,c),el('small',new Date(c.created_at).toLocaleString('pt-BR')),el('p',c.body));
  if(c.can_delete&&token){const remove=el('button','Excluir');remove.type='button';remove.onclick=()=>action(async()=>{if(!confirm('Excluir este comentário?'))return;try{await request('/rest/v1/rpc/coffee_comment_delete',{p_id:c.id});const saved=confirmedComments.get(currentPostId());saved?.delete(c.id);await loadComments();}catch(e){$('#comments-status').textContent=e.message;}});row.append(remove);}
  $('#comments-list').append(row);}
  if(!comments.length)$('#comments-list').append(el('p','Nenhum comentário. Quem dá o primeiro pitaco?'));
@@ -248,10 +248,15 @@ if(isGazette){let polling=false;setInterval(async()=>{if(document.hidden||pollin
 if(configured){action(async()=>{try{await load();}catch(e){$('#next').textContent='Vamos preparar o café?';$('#queue').replaceChildren(el('p','Não foi possível carregar a fila. Tente atualizar em instantes.'));throw e;}});}else{data={admin:false,state:{version:0,participants:icons.slice(0,7).map((icon,i)=>({id:String(i+1),name:`Pessoa ${i+1}`,icon,active:true})),queue:['1','2','3','4','5','6','7']},history:[]};draft=structuredClone(data.state.participants);render();status('Demonstração: configure config.js e execute supabase/schema.sql para conectar o banco. Nenhuma alteração é salva neste modo.');}
 
 function canWrite(){return Boolean(token&&(data?.admin||account?.can_publish));}
-function authorBadge(){return el('span','AUTOR','author-badge');}
+function roleBadge(role){
+ const admin=role==='admin',label=admin?'ADMIN':'AUTOR',badge=el('span',undefined,'role-badge '+(admin?'admin-badge':'author-badge'));
+ const icon=el('img');icon.src=admin?'./assets/badge-admin.svg':'./assets/badge-author.svg';icon.alt='';icon.width=20;icon.height=22;badge.title=admin?'Administrador do Café do LSN':'Autor da Gazeta do LSN';badge.append(icon,el('span',label));return badge;
+}
+function authorBadge(){return roleBadge('author');}
+function appendRoleBadges(root,roles){if(roles?.is_admin)root.append(roleBadge('admin'));if(roles?.is_author)root.append(roleBadge('author'));}
 function renderAuthorProfiles(){
  const root=$('#author-profiles');root.replaceChildren();if(!data?.admin)return;
- for(const profile of account?.profiles||[]){const row=el('article',undefined,'author-profile'),info=el('div');info.append(personLabel(profile.icon,profile.name,profile.photo));if(profile.is_author)info.append(authorBadge());
+ for(const profile of account?.profiles||[]){const row=el('article',undefined,'author-profile'),info=el('div');info.append(personLabel(profile.icon,profile.name,profile.photo));appendRoleBadges(info,profile);
  const button=el('button',profile.is_author?'Retirar insígnia':'Conceder insígnia de autor');button.type='button';button.onclick=()=>action(async()=>{await request('/rest/v1/rpc/coffee_author_set',{p_user:profile.user_id,p_enabled:!profile.is_author});await load();status(profile.is_author?'Insígnia retirada.':'Insígnia de autor concedida!');});row.append(info,button);root.append(row);}
  if(!root.children.length)root.append(el('p','Os perfis cadastrados aparecem aqui.'));
 }

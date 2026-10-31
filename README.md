@@ -119,3 +119,11 @@ Execute `supabase/009_article_formatting.sql` depois da 008 e publique também o
 A formatação de trechos fica em marcações simples (`**negrito**`, `*itálico*`, `__sublinhado__`, `[texto](https://endereco)`, linhas `- item` ou `1. item`). O módulo transforma apenas essas marcações em nós DOM; HTML digitado é texto literal, e links só aceitam HTTP/HTTPS. Links abrem em outra aba com `noopener noreferrer`. Comentários permanecem em texto simples.
 
 O novo endpoint `coffee_post_publish_formatted` reaproveita as permissões e a autoria da 008, valida alinhamento/tamanho e grava tudo na mesma transação. As matérias anteriores recebem alinhamento à esquerda e tamanho 18 px. O teste de navegador cobre os botões, estilo computado da prévia e da publicação, HTML literal e links rejeitados. SQL ainda precisa ser aplicado no Supabase real.
+
+## Insígnias originais — atualização 010
+
+Execute `supabase/010_public_badges.sql` após a 008/009 e publique os arquivos atualizados e `assets/badge-admin.svg`, `assets/badge-author.svg`. As insígnias da opção 01 são originais: escudo com xícara dourado (ADMIN) e pena com página verde (AUTOR). Os componentes mantêm texto legível, desenho em pixels, contraste e descrição ao passar o mouse.
+
+O próprio perfil, os perfis do painel administrativo, a fila pública, os comentários e a identificação de quem publicou a matéria mostram as funções. Uma conta com os dois papéis exibe ambas. Os papéis vêm de `coffee_private.admins` e `coffee_private.authors`, consultados no servidor; a migração só adiciona indicadores booleanos, sem conceder privilégios e sem expor e-mail ou ID de conta nas respostas públicas. As permissões de publicação/exclusão permanecem as da 008.
+
+Testes com API simulada verificam ADMIN no perfil, comentário e matéria; AUTOR no perfil; e a manutenção dos fluxos de concessão, revogação e exclusão própria. A atualização SQL precisa ser aplicada e validada no Supabase real.
