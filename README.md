@@ -178,3 +178,16 @@ Na área dos cafeteiros, o administrador vê **Matérias publicadas**, com todas
 O endpoint `coffee_post_delete` da migração 008 já valida a propriedade ou o papel de administrador no servidor e retira a matéria de publicação (`published=false`). Não há nova migração SQL. A lista, a matéria selecionada, a URL e os comentários visíveis são atualizados após remover. A sombra externa do jornal, o relevo da moldura e o contraste da dobra de papel foram suavizados.
 
 O teste de navegador com API simulada cobre cancelamento das duas etapas, confirmação incorreta, exclusão de matéria de outro autor pelo administrador, restrição de autoria e remoção da última matéria. As permissões do banco real não foram alteradas nem testadas nesta atualização.
+
+
+## Exclusão de usuários — atualização 013
+
+Execute `supabase/013_user_deletion.sql` no SQL Editor como `postgres`, após a atualização 012, antes de publicar o frontend. Não execute novamente o schema base. A migração pode ser reaplicada.
+
+Em **Área dos cafeteiros → Contas dos cafeteiros**, o administrador pode selecionar **Excluir usuário**. Primeiro confirma a conta e os efeitos; depois digita **EXCLUIR**. Cancelar qualquer etapa ou escrever outro texto não envia a exclusão. A própria conta do administrador fica protegida na interface e no servidor. Outros usuários, inclusive autores, não podem executar essa ação. A confirmação também é exigida pelo endpoint.
+
+A função `coffee_user_delete` remove a conta de `auth.users`, o perfil, as permissões e as solicitações. As sessões e tokens de atualização vinculados à conta são removidos por cascata. Se houver vaga vinculada, ela sai dos participantes e da fila, preservando a ordem dos demais e incrementando a versão. O histórico de compras e as matérias continuam disponíveis; o vínculo das matérias com a conta deixa de existir. Os comentários são anonimizados e marcados como removidos, mantendo seus IDs, encadeamento e respostas de outras pessoas. O campo de usuário dos comentários passa a aceitar nulo com FK `ON DELETE SET NULL`.
+
+A operação é atômica: se algum vínculo impedir a exclusão, conta, fila, solicitações e comentários permanecem intactos. Este site armazena as imagens como dados no banco; se houver arquivos atribuídos manualmente ao usuário no Supabase Storage, eles podem impedir a exclusão e devem ser tratados pela API/painel do Storage. Nunca apague objetos do Storage diretamente por SQL. Excluir a conta não impede que a pessoa faça um novo cadastro; ele terá novas permissões e precisará das aprovações habituais.
+
+Os testes de navegador com API simulada verificam as duas confirmações, cancelamentos, falha do servidor, proteção da própria conta, remoção das listas e layout móvel. `tests/user-deletion-db.test.mjs` executa as migrações em PostgreSQL local em memória (PGlite), com uma estrutura de Auth de teste: verifica permissões reais por papel SQL, confirmação no servidor, idempotência da migração, cascatas, rollback, remoção da vaga, preservação do histórico e das respostas. Também verifica que um token com o ID excluído não mantém as permissões de publicar/comentar. Esse teste requer `@electric-sql/pglite`; é possível apontar `PGLITE_MODULE` para o módulo instalado. O Supabase real não foi alterado automaticamente.

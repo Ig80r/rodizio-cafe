@@ -77,7 +77,7 @@ function renderAccount(){
  authView();$('#member').hidden=!token;
  $('#gazette-editor').hidden=!canWrite();$('#my-publications').hidden=!canWrite();
  if(!account)return;
- const profile=account.profile;$('#my-author-badge').hidden=!(profile?.is_author||data?.admin);$('#my-author-badge').replaceChildren();appendRoleBadges($('#my-author-badge'),{is_author:profile?.is_author,is_admin:data?.admin});renderAuthorProfiles();renderCommentApprovals();profilePhoto=profile?.photo||null;renderPhotoPreview();
+ const profile=account.profile;$('#my-author-badge').hidden=!(profile?.is_author||data?.admin);$('#my-author-badge').replaceChildren();appendRoleBadges($('#my-author-badge'),{is_author:profile?.is_author,is_admin:data?.admin});renderAuthorProfiles();renderCommentApprovals();renderUserProfiles();profilePhoto=profile?.photo||null;renderPhotoPreview();
  $('#profile').elements.nickname.value=profile?.name||'';
  $('#profile').elements.icon.value=profile?.icon||'🦊';
  $('#member-status').textContent=(profile?.participant_id?'Rodízio: você já pode enviar compras. ':'Rodízio: aguardando vínculo a uma vaga. ')+(mayComment()?'Gazeta: comentários autorizados.':'Gazeta: aguardando autorização para comentar.');
@@ -325,4 +325,27 @@ function renderCommentApprovals(){
  for(const profile of account?.profiles||[]){const row=el('article',undefined,'author-profile'),info=el('div');info.append(personLabel(profile.icon,profile.name,profile.photo),el('small',profile.is_admin?'Administrador · comentários liberados':profile.comments_approved?'Comentários autorizados':'Aguardando autorização para comentar'));
  row.append(info);if(!profile.is_admin){const button=el('button',profile.comments_approved?'Bloquear comentários':'Autorizar comentários');button.type='button';button.onclick=()=>action(async()=>{await request('/rest/v1/rpc/coffee_comment_permission_set',{p_user:profile.user_id,p_enabled:!profile.comments_approved});await load();status(profile.comments_approved?'Comentários bloqueados para este perfil.':'Comentários autorizados para este perfil!');});row.append(button);}root.append(row);}
  if(!root.children.length)root.append(el('p','Os perfis cadastrados aparecem aqui.'));
+}
+
+function renderUserProfiles(){
+ const root=$('#user-profiles');root.replaceChildren();if(!token||!data?.admin)return;
+ for(const profile of account?.profiles||[]){
+ const row=el('article',undefined,'user-profile'),info=el('div');row.dataset.userId=profile.user_id;
+ info.append(personLabel(profile.icon,profile.name,profile.photo));appendRoleBadges(info,profile);
+ info.append(el('small',profile.participant_id?'Vinculado à fila do café':'Sem vaga vinculada'));
+ row.append(info);
+ if(profile.user_id===account?.profile?.user_id)row.append(el('small','Sua conta · exclusão protegida'));
+ else{const button=el('button','Excluir usuário');button.type='button';button.className='delete-user';button.onclick=()=>action(async()=>{
+ if(!token||!data?.admin)throw Error('Acesso exclusivo do administrador.');
+ if(!confirm(`Excluir a conta de “${profile.name}”? O acesso, a vaga na fila e as solicitações serão removidos. Compras e matérias serão preservadas. Comentários serão marcados como removidos, mantendo as respostas.`))return;
+ const confirmation=prompt(`Confirmação final: digite EXCLUIR para apagar a conta de “${profile.name}”. A exclusão da conta é definitiva.`,'');
+ if(confirmation===null)return;
+ if(confirmation.trim()!=='EXCLUIR'){status('Nada foi removido. A confirmação precisa ser EXCLUIR.');return;}
+ try{await request('/rest/v1/rpc/coffee_user_delete',{p_user:profile.user_id,p_confirmation:confirmation.trim()});}
+ catch(e){if(e.message.includes('coffee_user_delete')&&/schema cache|Could not find/.test(e.message))throw Error('A exclusão de usuários ainda precisa ser ativada: execute supabase/013_user_deletion.sql no SQL Editor.');throw e;}
+ await load();status('Conta excluída. O histórico de compras e as matérias foram preservados.');
+ });row.append(button);}
+ root.append(row);
+ }
+ if(!root.children.length)root.append(el('p','Nenhum perfil cadastrado.'));
 }

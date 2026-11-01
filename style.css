@@ -186,3 +186,5 @@ body[data-page=cafe] .intro h1{font-size:clamp(42px,5vw,66px);line-height:1.08;t
 
 .gazette-reading .newspaper-wrap{box-shadow:inset 0 0 0 3px #30232640}
 #post-admin-actions{display:flex;justify-content:flex-end;margin-bottom:14px}#post-admin-actions[hidden]{display:none}.delete-post{color:#f0c6b9;border-color:#a77667;font-size:12px}.delete-post:hover{background:#513337}.my-post-row>div{min-width:0;overflow-wrap:anywhere}.my-post-row p{font-size:12px;color:var(--muted)}
+
+.user-profile{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px;margin:12px 0;border:1px solid #70545d;background:#302832}.user-profile>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;overflow-wrap:anywhere}.user-profile small{color:var(--muted);font-size:12px}.delete-user{color:#f0c6b9;border-color:#a77667;white-space:nowrap}.delete-user:hover{background:#513337}@media(max-width:600px){.user-profile{align-items:flex-start;flex-wrap:wrap}.user-profile>div{width:100%}}
