@@ -216,3 +216,5 @@ body[data-page=cups] header nav{flex-wrap:wrap;justify-content:flex-end}.cups-he
 #post-publisher .role-badge{font-size:8px;padding:2px 5px;gap:4px;letter-spacing:.3px}
 #post-publisher .role-badge img{width:12px;height:14px}
 #post-preview .preview-publisher{font:11px/1.5 Georgia,serif;text-align:right;color:#655544;margin:14px 0 0;white-space:normal}
+
+.my-post-row>div:first-child{flex:1}.my-post-row{flex-wrap:wrap}#post-admin-actions{gap:10px;flex-wrap:wrap}#post-cancel-edit{margin:8px 10px 8px 0}#post-edit-notice:not([hidden]){padding:12px;border-left:3px solid #dfb078;background:#44352f}

@@ -219,3 +219,16 @@ O reset apaga somente `coffee_private.history`. Com isso, **Quem abasteceu**, **
 A função bloqueia a linha de estado usada para registrar compras e confere a versão que o administrador visualizou. Se os dados mudarem, é preciso atualizar e confirmar novamente. Ao concluir, incrementa essa versão para invalidar tentativas antigas de compra/reset, sem mudar a ordem da fila. Isso impede que uma repetição de um pedido antigo apague compras novas. O histórico apagado não pode ser recuperado pela interface.
 
 `tests/history-reset-db.test.mjs` verifica permissões SQL reais, confirmação no servidor, reaplicação da migração sem perda de dados, rejeição de versões antigas, preservação das demais tabelas e registro de novas compras após o reset em PostgreSQL local em memória (PGlite). O teste de navegador com API simulada também cobre cancelamento nas duas etapas, confirmação errada, falha do servidor e atualização dos indicadores. O Supabase real não é alterado automaticamente.
+
+
+## Edição de matérias publicadas — atualização 016
+
+Execute `supabase/016_post_editing.sql` no SQL Editor, como `postgres`, após as atualizações anteriores, e depois publique os arquivos. A migração acrescenta `edit_version` e `updated_at` e pode ser reaplicada.
+
+O criador da publicação encontra **Editar matéria** na lista de suas matérias e **Editar esta matéria** na própria Gazeta. O editor carrega a versão atual, incluindo título, frase e autor da frase, data, corpo, foto, legenda, alinhamento e tamanho da fonte. **Salvar alterações** atualiza a publicação existente, mantendo ID, endereço, comentários e criador. O modo de edição permanece aberto após salvar; **Cancelar edição** volta ao formulário de nova matéria e pede confirmação se houver mudanças não salvas. Abrir outra matéria com um rascunho alterado também pede confirmação. Sair da conta encerra o modo de edição.
+
+A RPC `coffee_post_update` exige login, conta existente, permissão atual de publicação e `created_by=auth.uid()`. O administrador só pode editar suas próprias matérias; sua permissão de excluir qualquer matéria continua independente. O autor da frase digitado no formulário não altera a autoria da publicação. Matérias removidas, de outra pessoa ou sem criador vinculado não podem ser editadas por essa função. Os campos privados de autoria não são expostos pela leitura pública.
+
+Cada atualização verifica a versão carregada no editor. Se outra aba já tiver salvo uma versão mais recente, a gravação é recusada sem descartar o rascunho; reabrir a edição busca os dados atuais. Falhas do servidor também preservam o texto digitado. O banco valida os limites, a imagem e as opções de formatação, e não permite alterar o ID, o criador nem a data técnica original de criação.
+
+O teste de interface com API simulada cobre carregamento, imagem preservada, formatação, atualização sem duplicação, cancelamento, erro de gravação e conflito de versões. `tests/post-editing-db.test.mjs` verifica permissões reais em PostgreSQL local em memória: autor, outro autor, administrador, acesso anônimo, retirada da insígnia, validações, versão concorrente e preservação da autoria/comentários. O Supabase real não foi modificado automaticamente.
