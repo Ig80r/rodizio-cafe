@@ -121,9 +121,9 @@ let pearlPages=[
 let pearlPage=0,postsLoaded=false;
 function currentPostId(){return pearlPages[pearlPage]?.id;}
 function renderPost(){
- const page=pearlPages[pearlPage];renderPostAdminActions(page);if(!page){$('#post-publisher').replaceChildren();if(isGazette){const url=new URL(location.href);url.searchParams.delete('post');history.replaceState(null,'',url);document.title='A Gazeta do LSN • Matérias e pérolas';}return;}
+ const page=pearlPages[pearlPage];renderPostAdminActions(page);if(!page){$('#post-publisher').replaceChildren();if(isGazette){const url=new URL(location.href);url.searchParams.delete('post');history.replaceState(null,'',url);document.title='A GAZETA DO LSN • Matérias e pérolas';}return;}
  const publisher=$('#post-publisher');publisher.replaceChildren();if(page.publisher_name)publisher.append(el('span','Publicado por '+page.publisher_name));appendRoleBadges(publisher,{is_author:page.publisher_is_author,is_admin:page.publisher_is_admin});
- if(isGazette){const url=new URL(location.href);url.searchParams.set('post',page.id);history.replaceState(null,'',url);document.title=page.title+' • A Gazeta do LSN';}
+ if(isGazette){const url=new URL(location.href);url.searchParams.set('post',page.id);history.replaceState(null,'',url);document.title=page.title+' • A GAZETA DO LSN';}
  $('#post-title').textContent=page.title;$('#post-title').hidden=false;
  $('#pearl-page blockquote').textContent='“'+page.quote+'”';
  $('.quote-credit strong').textContent='— '+page.author;
