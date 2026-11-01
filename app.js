@@ -121,7 +121,7 @@ let pearlPages=[
 let pearlPage=0,postsLoaded=false;
 function currentPostId(){return pearlPages[pearlPage]?.id;}
 function renderPost(){
- const page=pearlPages[pearlPage];if(!page){$('#post-publisher').replaceChildren();return;}
+ const page=pearlPages[pearlPage];renderPostAdminActions(page);if(!page){$('#post-publisher').replaceChildren();if(isGazette){const url=new URL(location.href);url.searchParams.delete('post');history.replaceState(null,'',url);document.title='A Gazeta do LSN • Matérias e pérolas';}return;}
  const publisher=$('#post-publisher');publisher.replaceChildren();if(page.publisher_name)publisher.append(el('span','Publicado por '+page.publisher_name));appendRoleBadges(publisher,{is_author:page.publisher_is_author,is_admin:page.publisher_is_admin});
  if(isGazette){const url=new URL(location.href);url.searchParams.set('post',page.id);history.replaceState(null,'',url);document.title=page.title+' • A Gazeta do LSN';}
  $('#post-title').textContent=page.title;$('#post-title').hidden=false;
@@ -276,12 +276,31 @@ function renderAuthorProfiles(){
  const button=el('button',profile.is_author?'Retirar insígnia':'Conceder insígnia de autor');button.type='button';button.onclick=()=>action(async()=>{await request('/rest/v1/rpc/coffee_author_set',{p_user:profile.user_id,p_enabled:!profile.is_author});await load();status(profile.is_author?'Insígnia retirada.':'Insígnia de autor concedida!');});row.append(info,button);root.append(row);}
  if(!root.children.length)root.append(el('p','Os perfis cadastrados aparecem aqui.'));
 }
+function removePost(post){return action(async()=>{
+ if(!token||!post.can_delete)throw Error('Sem permissão para excluir esta matéria.');
+ if(!confirm(`Excluir “${post.title}” da Gazeta?`))return;
+ if(data?.admin){
+ const confirmation=prompt(`Confirmação final: digite EXCLUIR para remover “${post.title}”. A matéria deixará de aparecer na Gazeta.`,'');
+ if(confirmation===null)return;
+ if(confirmation.trim()!=='EXCLUIR'){status('Nada foi removido. A confirmação precisa ser EXCLUIR.');return;}
+ }
+ await request('/rest/v1/rpc/coffee_post_delete',{p_id:post.id});
+ $('#archive-month').value='';$('#archive-week').value='';cancelReply();$('#comment-form').reset();
+ await loadPosts();await loadComments();status('Matéria excluída da Gazeta.');
+});}
+function renderPostAdminActions(post){
+ const root=$('#post-admin-actions');root.replaceChildren();root.hidden=!(token&&data?.admin&&post?.can_delete);if(root.hidden)return;
+ const button=el('button','Excluir esta matéria');button.type='button';button.className='delete-post';button.onclick=()=>removePost(post);root.append(button);
+}
 function renderMyPosts(){
- const root=$('#my-posts');root.replaceChildren();$('#my-publications').hidden=!canWrite();if(!canWrite())return;
- const mine=pearlPages.filter(p=>p.is_mine);
- for(const post of mine){const row=el('article',undefined,'my-post-row'),info=el('div');info.append(el('strong',post.title),el('p',prettyDate(post.published_on)));
- if(post.can_delete){const button=el('button','Excluir minha matéria');button.type='button';button.onclick=()=>action(async()=>{if(!confirm(`Excluir “${post.title}” da Gazeta?`))return;await request('/rest/v1/rpc/coffee_post_delete',{p_id:post.id});$('#archive-month').value='';$('#archive-week').value='';await loadPosts();await loadComments();status('Matéria excluída da Gazeta.');});row.append(info,button);}else row.append(info);root.append(row);}
- if(!mine.length)root.append(el('p','Você ainda não publicou nenhuma matéria.'));
+ const root=$('#my-posts'),admin=Boolean(data?.admin);root.replaceChildren();$('#my-publications').hidden=!canWrite();if(!canWrite())return;
+ $('#my-publications h2').textContent=admin?'Matérias publicadas':'Minhas matérias';
+ $('#my-publications .hint').textContent=admin?'Você pode remover qualquer matéria. Para confirmar, será preciso digitar EXCLUIR.':'Você pode excluir as matérias que publicou.';
+ const visible=pearlPages.filter(p=>admin||p.is_mine);
+ for(const post of visible){const row=el('article',undefined,'my-post-row'),info=el('div');info.append(el('strong',post.title),el('p',prettyDate(post.published_on)+(admin?' · '+(post.publisher_name||'Autor não informado'):'')));
+ row.dataset.postId=post.id;
+ if(post.can_delete){const button=el('button',admin?'Excluir matéria':'Excluir minha matéria');button.type='button';button.className='delete-post';button.onclick=()=>removePost(post);row.append(info,button);}else row.append(info);root.append(row);}
+ if(!visible.length)root.append(el('p',admin?'Nenhuma matéria publicada.':'Você ainda não publicou nenhuma matéria.'));
 }
 
 for(const button of document.querySelectorAll('[data-format]'))button.onclick=()=>{

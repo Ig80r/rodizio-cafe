@@ -170,3 +170,11 @@ Configuração no painel Supabase:
 4. Publique os arquivos novos e atualizados. Teste com uma conta real: pedir recuperação, abrir o e-mail, alterar a senha e entrar com a nova senha. Entrega de e-mail depende das configurações e dos limites do provedor.
 
 Os testes de navegador em `tests/recovery.test.mjs` usam API simulada: envio com redirecionamento correto, resposta que não revela se existe uma conta, confirmação de senha, mínimo de 8 caracteres, persistência apenas na aba, limpeza do token, link vencido e redirecionamento de recuperação a partir da página inicial. Esses testes não verificam a entrega real do e-mail.
+
+## Moderação das matérias pelo administrador
+
+Na área dos cafeteiros, o administrador vê **Matérias publicadas**, com todas as matérias, incluindo as de outros autores e as antigas sem autor vinculado. Também pode usar **Excluir esta matéria** na própria Gazeta. Primeiro confirma o título e depois digita **EXCLUIR**. Cancelar qualquer etapa ou digitar outro texto não envia a exclusão. Autores continuam vendo apenas suas matérias, com a confirmação existente.
+
+O endpoint `coffee_post_delete` da migração 008 já valida a propriedade ou o papel de administrador no servidor e retira a matéria de publicação (`published=false`). Não há nova migração SQL. A lista, a matéria selecionada, a URL e os comentários visíveis são atualizados após remover. A sombra externa do jornal, o relevo da moldura e o contraste da dobra de papel foram suavizados.
+
+O teste de navegador com API simulada cobre cancelamento das duas etapas, confirmação incorreta, exclusão de matéria de outro autor pelo administrador, restrição de autoria e remoção da última matéria. As permissões do banco real não foram alteradas nem testadas nesta atualização.

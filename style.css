@@ -49,7 +49,7 @@ button{font-size:13px;background:#332c35;border-color:#826755;box-shadow:inset 0
 .hint{font-size:12px}.section-title h2{font-size:30px}footer{font-family:'DM Sans',Arial,sans-serif;font-size:12px}
 /* A newspaper laid on the coffee table, inspired by the supplied reference. */
 .newspaper-wrap{padding:22px 12px 24px;margin:42px 0 26px;background:#392c2b;border:2px solid #5f4541;box-shadow:inset 0 0 0 6px #302326}
-.newspaper{position:relative;max-width:950px;margin:auto;padding:18px 26px 14px;color:#39332c;background-color:#d3c6a6;background-image:repeating-linear-gradient(0deg,#6f5b3e07 0 1px,transparent 1px 4px),linear-gradient(102deg,#e1d5b8,#c7b99b 48%,#d8cbae 51%,#d2c3a2);border:1px solid #ad9b7d;box-shadow:5px 8px 0 #1d172b70;transform:rotate(-.65deg)}
+.newspaper{position:relative;max-width:950px;margin:auto;padding:18px 26px 14px;color:#39332c;background-color:#d3c6a6;background-image:repeating-linear-gradient(0deg,#6f5b3e07 0 1px,transparent 1px 4px),linear-gradient(102deg,#e1d5b8,#d5c7a9 48%,#dcd0b2 51%,#d8caac);border:1px solid #ad9b7d;box-shadow:0 4px 12px #1d172b24;transform:rotate(-.65deg)}
 .paper-topline,.paper-dateline,.paper-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:Georgia,serif;font-size:10px}
 .paper-topline{font-size:8px;letter-spacing:1px;padding-bottom:7px}
 .newspaper .paper-masthead{display:flex;align-items:center;justify-content:space-between;gap:14px;max-width:none;margin:0;padding:12px 0;background:transparent;border:0;border-top:3px double #615341;border-bottom:3px double #615341}
@@ -183,3 +183,6 @@ body[data-page=cafe] .intro h1{font-size:clamp(42px,5vw,66px);line-height:1.08;t
 .forgot-password{display:block;margin-top:18px;font-size:12px;color:#dac29d;text-decoration:underline;text-underline-offset:4px}.forgot-password:hover{color:#fff0d4}
 .recovery-main{min-height:calc(100vh - 130px);padding-top:45px;padding-bottom:55px}.recovery-main h1{font-family:'Jersey 10','Chakra Petch',monospace;font-size:clamp(38px,5vw,60px);max-width:850px;letter-spacing:0}.recovery-main form{margin-top:24px}.recovery-main h2{font-family:'DM Sans',Arial,sans-serif;font-size:20px}.recovery-main #recovery-status:not(:empty){padding:15px;border:1px solid #a48256;background:#423427;color:#f2d9b3;max-width:650px;line-height:1.6}.recovery-main .page-link{margin-top:18px;border-color:#98754e}#recovery-again{margin-top:14px}
 @media(max-width:750px){.recovery-main{padding-top:30px}.recovery-main h1{font-size:42px}.recovery-main h2{font-size:18px}}
+
+.gazette-reading .newspaper-wrap{box-shadow:inset 0 0 0 3px #30232640}
+#post-admin-actions{display:flex;justify-content:flex-end;margin-bottom:14px}#post-admin-actions[hidden]{display:none}.delete-post{color:#f0c6b9;border-color:#a77667;font-size:12px}.delete-post:hover{background:#513337}.my-post-row>div{min-width:0;overflow-wrap:anywhere}.my-post-row p{font-size:12px;color:var(--muted)}
