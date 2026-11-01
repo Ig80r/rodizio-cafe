@@ -258,7 +258,7 @@ function renderArchive(){
 function filterArchive(){renderArchive();const visible=filteredPosts();if(visible.length){if(!visible.some(p=>p.id===currentPostId()))selectPost(visible[0].id);else renderPost();}$('.gazette-reading').hidden=!visible.length;}
 $('#archive-month').onchange=()=>{$('#archive-week').value='';filterArchive();};$('#archive-week').onchange=filterArchive;
 $('#archive-clear').onclick=()=>{$('#archive-month').value='';$('#archive-week').value='';filterArchive();};
-renderArchive();showPage(false);
+renderArchive();showPage(new URLSearchParams(location.search).get('acesso')==='1');
 if(isGazette){let polling=false;setInterval(async()=>{if(document.hidden||polling||!$('#admin').hidden)return;polling=true;try{await loadComments();}finally{polling=false;}},20000);}
 
 if(configured){action(async()=>{try{await load();}catch(e){$('#next').textContent='Vamos preparar o café?';$('#queue').replaceChildren(el('p','Não foi possível carregar a fila. Tente atualizar em instantes.'));throw e;}});}else{data={admin:false,state:{version:0,participants:icons.slice(0,7).map((icon,i)=>({id:String(i+1),name:`Pessoa ${i+1}`,icon,active:true})),queue:['1','2','3','4','5','6','7']},history:[]};draft=structuredClone(data.state.participants);render();status('Demonstração: configure config.js e execute supabase/schema.sql para conectar o banco. Nenhuma alteração é salva neste modo.');}
