@@ -206,3 +206,16 @@ O ranking abre em **Hoje** e permite alternar para **Semana** e **Acumulado**. O
 As tabelas privadas `cup_days` e `cup_changes` têm RLS, sem acesso direto para `anon` ou `authenticated`. A RPC de ajuste exige login, autorização e conta existente; recebe apenas chave única, variação e dia esperado. Cada tentativa tem uma chave idempotente para não somar duas vezes após falha de resposta. Tentativas pendentes ficam na sessão da aba, separadas por conta, e podem ser confirmadas após recarga. Uma tentativa de outro dia só é aceita se já estiver registrada, retornando o estado sem mover xícaras para hoje. A contagem é atômica. Excluir a conta pela atualização 013 também remove seus registros de consumo por cascata.
 
 `tests/cups-db.test.mjs` testa as migrações em PostgreSQL local em memória: permissões por papel, cálculos de dia/semana/média/litros, totais negativos, repetição de pedidos, virada de dia, revogação e exclusão de conta. `tests/cups-ui.test.mjs` usa API simulada no navegador para testar login persistente, períodos, adição/correção, resposta perdida depois de salvar, retomada após recarga, autorizações e layout em 375, 768 e 1440 px. O teste de banco requer `@electric-sql/pglite` ou `PGLITE_MODULE`; os testes de interface requerem Playwright. Nenhum teste altera o Supabase real.
+
+
+## Reset do histórico de abastecimento — atualização 015
+
+Execute `supabase/015_history_reset.sql` no SQL Editor como `postgres`. Aplicar ou reaplicar a migração apenas cria a função: não apaga o histórico existente. Publique os arquivos atualizados depois.
+
+Em **Área dos cafeteiros**, o administrador encontra **Zerar o histórico de abastecimento**, após os ajustes de participantes e fila. A ação pede uma confirmação inicial e exige digitar **RESETAR**. Cancelar ou escrever outro texto não envia o reset. A função também exige a confirmação e verifica o papel de administrador no servidor.
+
+O reset apaga somente `coffee_private.history`. Com isso, **Quem abasteceu**, **cotas de energia** e **produtividade** voltam a zero. Participantes, ordem da fila, contas, permissões, solicitações (pendentes ou já aprovadas), matérias, comentários e consumo de xícaras permanecem intactos. Solicitações aprovadas não reabrem nem recriam os abastecimentos apagados.
+
+A função bloqueia a linha de estado usada para registrar compras e confere a versão que o administrador visualizou. Se os dados mudarem, é preciso atualizar e confirmar novamente. Ao concluir, incrementa essa versão para invalidar tentativas antigas de compra/reset, sem mudar a ordem da fila. Isso impede que uma repetição de um pedido antigo apague compras novas. O histórico apagado não pode ser recuperado pela interface.
+
+`tests/history-reset-db.test.mjs` verifica permissões SQL reais, confirmação no servidor, reaplicação da migração sem perda de dados, rejeição de versões antigas, preservação das demais tabelas e registro de novas compras após o reset em PostgreSQL local em memória (PGlite). O teste de navegador com API simulada também cobre cancelamento nas duas etapas, confirmação errada, falha do servidor e atualização dos indicadores. O Supabase real não é alterado automaticamente.

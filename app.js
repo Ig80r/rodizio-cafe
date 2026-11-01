@@ -349,3 +349,15 @@ function renderUserProfiles(){
  }
  if(!root.children.length)root.append(el('p','Nenhum perfil cadastrado.'));
 }
+
+$('#history-reset').onclick=()=>action(async()=>{
+ if(!token||!data?.admin)throw Error('Acesso exclusivo do administrador.');
+ const version=data.state.version;
+ if(!confirm('Resetar todo o histórico de abastecimento? Isso apaga “Quem abasteceu” e zera os totais de cotas de energia e produtividade. A exclusão é definitiva.'))return;
+ const confirmation=prompt('Confirmação final: digite RESETAR para apagar o histórico de abastecimento. A fila, os participantes e o placar de xícaras serão preservados.','');
+ if(confirmation===null)return;
+ if(confirmation.trim()!=='RESETAR'){status('Nada foi apagado. A confirmação precisa ser RESETAR.');return;}
+ try{await request('/rest/v1/rpc/coffee_history_reset',{p_version:version,p_confirmation:confirmation.trim()});}
+ catch(e){if(e.message.includes('coffee_history_reset')&&/schema cache|Could not find/.test(e.message))throw Error('O reset ainda precisa ser ativado: execute supabase/015_history_reset.sql no SQL Editor.');throw e;}
+ pending=null;await load();status('Histórico de abastecimento zerado. Cotas e produtividade também. A cafeteira segue trabalhando.');
+});
