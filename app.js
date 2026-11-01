@@ -77,7 +77,7 @@ function renderAccount(){
  authView();$('#member').hidden=!token;
  $('#gazette-editor').hidden=!canWrite();$('#my-publications').hidden=!canWrite();
  if(!account)return;
- const profile=account.profile;$('#my-author-badge').hidden=!(profile?.is_author||data?.admin);$('#my-author-badge').replaceChildren();appendRoleBadges($('#my-author-badge'),{is_author:profile?.is_author,is_admin:data?.admin});renderAuthorProfiles();renderCommentApprovals();renderUserProfiles();profilePhoto=profile?.photo||null;renderPhotoPreview();
+ const profile=account.profile;$('#my-author-badge').hidden=!(profile?.is_author||data?.admin);$('#my-author-badge').replaceChildren();appendRoleBadges($('#my-author-badge'),{is_author:profile?.is_author,is_admin:data?.admin});renderAuthorProfiles();renderCommentApprovals();renderUserProfiles();previewPost();profilePhoto=profile?.photo||null;renderPhotoPreview();
  $('#profile').elements.nickname.value=profile?.name||'';
  $('#profile').elements.icon.value=profile?.icon||'🦊';
  $('#member-status').textContent=(profile?.participant_id?'Rodízio: você já pode enviar compras. ':'Rodízio: aguardando vínculo a uma vaga. ')+(mayComment()?'Gazeta: comentários autorizados.':'Gazeta: aguardando autorização para comentar.');
@@ -208,6 +208,7 @@ const postForm=$('#post-form');
 // Local calendar date, not UTC, for the publication date input.
 const localNow=new Date();postForm.elements.date.value=[localNow.getFullYear(),String(localNow.getMonth()+1).padStart(2,'0'),String(localNow.getDate()).padStart(2,'0')].join('-');
 function previewPost(){
+ $('#post-preview .preview-publisher').textContent=account?.profile?.name?'Publicado por '+account.profile.name:'';
  $('#post-preview h3').textContent=postForm.elements.title.value||'Título da publicação';
  $('#post-preview blockquote').textContent=postForm.elements.quote.value?'“'+postForm.elements.quote.value+'”':'Sua frase do dia aparece aqui.';
  $('#post-preview .preview-author').textContent='— '+(postForm.elements.author.value||'Autor');
