@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 test('navegação, cadastro, login, logout e layout móvel',async()=>{
- const server=createServer(async(req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname;const file=pathname==='/'?'index.html':pathname.slice(1);if(!['index.html','gazeta.html','style.css','formatting.js','app.js','config.js'].includes(file)&&!/^assets\/[a-z-]+\.svg$/.test(file)){res.writeHead(404).end();return;}res.setHeader('Content-Type',file.endsWith('.svg')?'image/svg+xml':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await readFile(new URL('../'+file,import.meta.url)));}catch{res.writeHead(500).end();}});
+ const server=createServer(async(req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname;const file=pathname==='/'?'index.html':pathname.slice(1);if(!['index.html','gazeta.html','style.css','formatting.js','app.js','config.js'].includes(file)&&!/^assets\/[a-z0-9-]+\.svg$/.test(file)){res.writeHead(404).end();return;}res.setHeader('Content-Type',file.endsWith('.svg')?'image/svg+xml':file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');res.end(await readFile(new URL('../'+file,import.meta.url)));}catch{res.writeHead(500).end();}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  let browser;
  try{
@@ -60,9 +60,18 @@ test('navegação, cadastro, login, logout e layout móvel',async()=>{
  await page.locator('#paper-turn').click();assert.match(await page.locator('#pearl-page blockquote').innerText(),/reproduzível/);assert.equal(await page.locator('#paper-page-number').innerText(),'Página 2 de 2');
  await page.locator('#paper-turn').focus();await page.keyboard.press('Enter');assert.match(await page.locator('#pearl-page blockquote').innerText(),/nossa fé/);assert.equal(await page.locator('#paper-page-number').innerText(),'Página 1 de 2');
  assert.equal(await page.locator('#scene-motion').count(),0);
- assert.equal(await page.locator('#lab-scene').getAttribute('src'),'./assets/science-lab-animated.svg');
- await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>document.querySelector('#lab-scene').getAttribute('src')==='./assets/science-lab.svg');
- await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForFunction(()=>document.querySelector('#lab-scene').getAttribute('src')==='./assets/science-lab-animated.svg');
+ const sceneSrc=await page.locator('#lab-scene').getAttribute('src');
+ assert.match(sceneSrc,/^\.\/assets\/science-lab-animated(?:-2)?\.svg$/);
+ await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(src=>document.querySelector('#lab-scene').getAttribute('src')===src,sceneSrc.replace('-animated',''));
+ await page.emulateMedia({reducedMotion:'no-preference'});await page.waitForFunction(src=>document.querySelector('#lab-scene').getAttribute('src')===src,sceneSrc);
+ const previousScene=await page.evaluate(()=>JSON.parse(localStorage.getItem('lsn-lab-scene-v1')));
+ await page.reload();await page.waitForFunction(src=>document.querySelector('#lab-scene').getAttribute('src')===src,sceneSrc);
+ assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('lsn-lab-scene-v1'))),previousScene,'reload preserves the scene and its scheduled switch');
+ await page.evaluate(()=>{const key='lsn-lab-scene-v1',state=JSON.parse(localStorage.getItem(key));state.nextAt=Date.now()-1;localStorage.setItem(key,JSON.stringify(state));window.dispatchEvent(new StorageEvent('storage',{key}));});
+ const switchedSrc=sceneSrc.includes('-2.svg')?'./assets/science-lab-animated.svg':'./assets/science-lab-animated-2.svg';
+ await page.waitForFunction(src=>document.querySelector('#lab-scene').getAttribute('src')===src,switchedSrc);
+ const nextDelay=await page.evaluate(()=>JSON.parse(localStorage.getItem('lsn-lab-scene-v1')).nextAt-Date.now());
+ assert.ok(nextDelay>=29*60_000&&nextDelay<=90*60_000,'switch scheduled between 30 and 90 minutes');
  await page.screenshot({path:process.env.SCREENSHOT_PATH||'preview.png',fullPage:true});
 
 

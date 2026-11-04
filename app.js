@@ -185,13 +185,40 @@ $('#submit-buy').onsubmit=e=>{e.preventDefault();action(async()=>{const f=e.targ
 // A confirmação de e-mail é concluída pelo Supabase. O usuário entra por senha depois.
 if(location.hash.includes('access_token='))history.replaceState(null,'',location.pathname+location.search);
 
-// Animation runs automatically, with the system motion preference respected.
+// Each visit keeps its scene until a random 30–90 minute interval expires.
 const motionPreference=window.matchMedia('(prefers-reduced-motion: reduce)');
-function syncSceneMotion(){
- $('#lab-scene').src=motionPreference.matches?'./assets/science-lab.svg':'./assets/science-lab-animated.svg';
+const sceneStorageKey='lsn-lab-scene-v1';
+let sceneState,sceneTimer;
+function readSceneState(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(sceneStorageKey));
+  if(saved&&[0,1].includes(saved.variant)&&Number.isFinite(saved.nextAt))return saved;
+ }catch{}
+ return null;
 }
-syncSceneMotion();
+function syncSceneMotion(){
+ const suffix=sceneState.variant===1?'-2':'';
+ const src=`./assets/science-lab${motionPreference.matches?'':'-animated'}${suffix}.svg`;
+ const scene=$('#lab-scene');
+ if(scene.getAttribute('src')!==src)scene.src=src;
+ scene.alt='Laboratório em pixel art com cientista preparando café, notebooks e quadro de física.'+(sceneState.variant===1?' Pesquisador de cachos, barba, óculos e camiseta verde sentado usando o celular.':'');
+}
+function refreshLabScene(){
+ clearTimeout(sceneTimer);
+ const saved=readSceneState()||sceneState;
+ const now=Date.now();
+ sceneState=saved;
+ if(!sceneState||sceneState.nextAt<=now){
+  sceneState={variant:sceneState?1-sceneState.variant:Math.floor(Math.random()*2),nextAt:now+(30+Math.random()*60)*60_000};
+  try{localStorage.setItem(sceneStorageKey,JSON.stringify(sceneState));}catch{}
+ }
+ syncSceneMotion();
+ sceneTimer=setTimeout(refreshLabScene,Math.max(1000,Math.min(sceneState.nextAt-now,90*60_000)));
+}
+refreshLabScene();
 motionPreference.addEventListener('change',syncSceneMotion);
+window.addEventListener('storage',event=>{if(event.key===sceneStorageKey||event.key===null)refreshLabScene();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLabScene();});
 
 // Stable publication IDs keep comments attached when pages are reordered.
 let pearlPages=[
