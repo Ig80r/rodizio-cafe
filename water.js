@@ -5,6 +5,9 @@ let data = null;
 let busy = false;
 let loadedActor = null;
 let attempts = {};
+let orderDraft = null;
+let orderVersion = null;
+let orderDirty = false;
 const labels = {pending: 'Aguardando aprovação', approved: 'Aprovada', rejected: 'Recusada'};
 const sprites = {'🦊': 'raposa', '🐸': 'carcara', '🦥': 'sagui', '🦖': 'tatu-peba', '🐙': 'prea', '🦄': 'moco', '🐼': 'gato-do-mato', '🐧': 'mao-pelada', '🦉': 'coruja-buraqueira', '🐝': 'bem-te-vi'};
 
@@ -94,6 +97,7 @@ function syncAccess() {
   $('#water-access').textContent = message;
   document.querySelectorAll('button').forEach(button => { button.disabled = busy; });
   if (!busy) $('#water-buy button[type=submit]').disabled = !data?.queue?.length;
+  syncOrderControls();
 }
 
 function renderQueue() {
@@ -107,7 +111,7 @@ function renderQueue() {
   for (const [index, profile] of data.queue.entries()) {
     const card = element('article', undefined, 'person');
     card.append(person(profile), element('small', index === 0 ? 'É sua vez de salvar a hidratação!' : (index + 1) + 'º na fila'));
-    const ahead = profile.rounds - next.rounds;
+    const ahead = profile.rounds - Math.min(...data.queue.map(item => item.rounds));
     if (ahead > 0) card.append(element('small', ahead + ' rodada(s) coberta(s)', 'water-credit'));
     if (profile.is_me) card.append(element('small', 'Você', 'water-credit'));
     root.append(card);
@@ -122,6 +126,56 @@ async function review(request, approve) {
   status(approve ? 'Entrega confirmada. Rodadas contabilizadas e hidratação salva.' : 'Solicitação recusada.');
 }
 
+function orderChanged() {
+  return Boolean(orderDraft && data && orderDraft.map(item => item.id).join(',') !== data.queue.map(item => item.id).join(','));
+}
+
+function syncOrderControls() {
+  const changed = orderChanged();
+  const stale = orderVersion !== data?.version;
+  $('#water-order-save').disabled = busy || !data?.admin || !changed || stale;
+  $('#water-order-discard').disabled = busy || !data?.admin || (!changed && !stale);
+  for (const button of document.querySelectorAll('#water-order-list button')) {
+    const position = Number(button.dataset.position);
+    button.disabled = busy || position < 0 || position >= (orderDraft?.length || 0);
+  }
+}
+
+function renderOrder() {
+  const root = $('#water-order-list');
+  root.replaceChildren();
+  if (!data?.admin) { orderDraft = null; orderVersion = null; orderDirty = false; return; }
+  if (!orderDraft || !orderDirty) {
+    orderDraft = data.queue.slice();
+    orderVersion = data.version;
+  }
+  for (const [index, profile] of orderDraft.entries()) {
+    const row = element('div', undefined, 'water-order-row');
+    row.append(element('span', (index + 1) + 'º', 'water-position'), person(profile));
+    const actions = element('div', undefined, 'actions');
+    for (const [offset, title] of [[-1, 'Subir'], [1, 'Descer']]) {
+      const button = element('button', title);
+      button.type = 'button';
+      button.dataset.position = index + offset;
+      button.setAttribute('aria-label', title + ' ' + profile.name);
+      button.onclick = () => {
+        const destination = index + offset;
+        [orderDraft[index], orderDraft[destination]] = [orderDraft[destination], orderDraft[index]];
+        orderDirty = orderChanged();
+        renderOrder();
+        syncOrderControls();
+      };
+      actions.append(button);
+    }
+    row.append(actions);
+    root.append(row);
+  }
+  $('#water-order-note').textContent = orderVersion !== data.version
+    ? 'A fila mudou durante seus ajustes. Use Descartar ajustes para carregar a versão atual.'
+    : orderChanged() ? 'Após salvar, a vez será de ' + orderDraft[0].name + '.' : 'A ordem exibida está salva.';
+  if (!orderDraft.length) root.append(element('p', 'Inclua participantes para organizar a fila da água.'));
+}
+
 function renderAdmin() {
   const profiles = $('#water-member-profiles');
   const pending = $('#water-pending');
@@ -130,6 +184,7 @@ function renderAdmin() {
   profiles.replaceChildren();
   pending.replaceChildren();
   select.replaceChildren();
+  renderOrder();
   if (!data.admin) return;
   for (const profile of data.profiles) {
     const row = element('article', undefined, 'author-profile');
@@ -266,6 +321,8 @@ $('#water-login').onsubmit = event => {
     const form = event.target;
     await login(form.elements.email.value.trim(), form.elements.password.value);
     form.elements.password.value = '';
+    orderDraft = null;
+    orderDirty = false;
     await load();
     status('Bem-vindo ao plantão da hidratação.');
     if (location.hash === '#water-admin' && data.admin) $('#water-admin').scrollIntoView({behavior: 'smooth'});
@@ -275,6 +332,15 @@ $('#water-logout').onclick = () => action(async () => {
   try { await logout(); }
   finally { await load(); }
 });
+$('#water-order-save').onclick = () => action(async () => {
+  if (!data?.admin || !orderChanged()) return;
+  await rpc('coffee_water_queue_set', {p_order: orderDraft.map(profile => profile.id), p_version: orderVersion});
+  orderDraft = null;
+  orderDirty = false;
+  await load();
+  status('Ordem da água salva. A próxima pessoa já foi atualizada.');
+});
+$('#water-order-discard').onclick = () => { orderDraft = null; orderDirty = false; renderOrder(); syncOrderControls(); };
 $('#water-refresh').onclick = () => action(load);
 for (const form of [$('#water-submit'), $('#water-buy')]) form.elements.quantity.oninput = updateVolumes;
 window.addEventListener('coffee-session-changed', () => { if (!busy) action(load); });

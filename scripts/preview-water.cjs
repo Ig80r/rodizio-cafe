@@ -27,7 +27,7 @@ async function createDatabase() {
     '006_gazette_comments.sql', '008_authors.sql', '009_article_formatting.sql',
     '010_public_badges.sql', '011_member_approval.sql', '012_comment_threads.sql',
     '013_user_deletion.sql', '014_cup_ranking.sql', '015_history_reset.sql',
-    '016_post_editing.sql', '018_queue_rounds.sql', '019_cup_ranking_members.sql', '020_water_rotation.sql'];
+    '016_post_editing.sql', '018_queue_rounds.sql', '019_cup_ranking_members.sql', '020_water_rotation.sql', '022_water_queue_control.sql'];
   for (const file of migrations) await db.exec(await fs.readFile(path.join(ROOT, 'supabase', file), 'utf8'));
   for (const user of Object.values(USERS)) {
     await db.query('INSERT INTO auth.users VALUES($1,$2)', [user.id, {name: user.name}]);
@@ -75,7 +75,7 @@ async function startPreview(port = 4174) {
     return result;
   };
   const allowed = new Set(['coffee_water_read', 'coffee_water_submit', 'coffee_water_member_set',
-    'coffee_water_buy', 'coffee_water_review', 'coffee_cups_read', 'coffee_read', 'coffee_account', 'coffee_posts_read', 'coffee_comments_read']);
+    'coffee_water_buy', 'coffee_water_review', 'coffee_water_queue_set', 'coffee_cups_read', 'coffee_read', 'coffee_account', 'coffee_posts_read', 'coffee_comments_read']);
   const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://localhost');
     const send = (status, body) => {

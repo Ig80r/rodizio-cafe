@@ -55,13 +55,27 @@ test('água no navegador com banco local: inclusão, solicitação, aprovação 
     await page.locator('#water-buy button').click();
     await page.locator('#water-status').filter({hasText: 'Entrega registrada'}).waitFor();
     assert.equal(await page.locator('#water-liters').innerText(), '120 L');
+    const litersBeforeOrder = await page.locator('#water-liters').innerText();
+    await page.getByRole('button', {name: 'Subir ' + USERS.ana.name, exact: true}).click();
+    await page.getByRole('button', {name: 'Subir ' + USERS.ana.name, exact: true}).click();
+    assert.match(await page.locator('#water-order-note').innerText(), /Após salvar/);
+    assert.match(await page.locator('#water-next').innerText(), /Lívia/);
+    await page.locator('#water-order-save').click();
+    await page.locator('#water-status').filter({hasText: 'Ordem da água salva'}).waitFor();
+    assert.equal(await page.locator('#water-next').innerText(), USERS.ana.name);
+    assert.equal(await page.locator('#water-liters').innerText(), litersBeforeOrder);
+    await page.getByRole('button', {name: 'Descer ' + USERS.ana.name, exact: true}).click();
+    await page.locator('#water-order-discard').click();
+    assert.match(await page.locator('#water-order-list .water-order-row').first().innerText(), /Ana da bancada/);
+    assert.equal(await page.locator('#water-order-save').isDisabled(), true);
     if (process.env.WATER_SCREENSHOT) {
       await page.evaluate(() => document.fonts.ready);
       await page.screenshot({path: process.env.WATER_SCREENSHOT, fullPage: true});
     }
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({width, height: 1100});
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'água overflow ' + width);
+      const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(item => item.getBoundingClientRect().right > innerWidth + 1).map(item => ({tag:item.tagName,id:item.id,cls:item.className,width:item.getBoundingClientRect().width,right:item.getBoundingClientRect().right})).slice(-15));
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'água overflow ' + width + JSON.stringify(overflow));
       if (width === 390 && process.env.WATER_SCREENSHOT) await page.screenshot({path: process.env.WATER_SCREENSHOT.replace('.png', '-celular.png'), fullPage: true});
     }
     await page.goto(base + '/index.html');

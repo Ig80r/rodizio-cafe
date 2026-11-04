@@ -341,3 +341,16 @@ body[data-page=cups] header nav{flex-wrap:wrap;justify-content:flex-end}.cups-he
 .editor-name > span { display: block; font-size: 12px; color: var(--muted); }
 .editor-name > strong { display: block; margin-top: 7px; font-size: 14px; overflow-wrap: anywhere; }
 .editor-name > button { margin-top: 8px; padding: 5px 8px; font-size: 10px; }
+
+.water-order-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px; margin: 10px 0; border: 1px solid #637b83; background: #30343c; }
+.water-order-row .person-label { flex: 1; min-width: 130px; }
+.water-order-row button { padding: 7px 11px; font-size: 12px; }
+.water-position { color: #b8d6d9; font-weight: 600; min-width: 24px; }
+#water-order-management { padding: 20px; border: 1px solid #637b83; }
+@media(max-width:600px) { #water-order-management { padding: 14px; } .water-order-row .actions { margin-left: 36px; } }
+
+@media(max-width:650px) {
+  .water-heading > div { min-width: 0; flex: 1; }
+  .water-heading > img { flex-shrink: 0; }
+  .water-heading h1 { font-size: clamp(36px, 10vw, 46px); overflow-wrap: anywhere; }
+}
