@@ -92,7 +92,7 @@ function renderAccount(){
  authView();$('#member').hidden=!token;
  $('#gazette-editor').hidden=!canWrite();$('#my-publications').hidden=!canWrite();
  if(!account)return;
- const profile=account.profile;$('#my-author-badge').hidden=!(profile?.is_author||data?.admin);$('#my-author-badge').replaceChildren();appendRoleBadges($('#my-author-badge'),{is_author:profile?.is_author,is_admin:data?.admin});renderAuthorProfiles();renderCommentApprovals();renderUserProfiles();previewPost();profilePhoto=profile?.photo||null;renderPhotoPreview();
+ const profile=account.profile;$('#my-author-badge').hidden=!(profile?.is_author||data?.admin);$('#my-author-badge').replaceChildren();appendRoleBadges($('#my-author-badge'),{is_author:profile?.is_author,is_admin:data?.admin});renderAuthorProfiles();renderCommentApprovals();renderUserProfiles();renderCupRankingProfiles();previewPost();profilePhoto=profile?.photo||null;renderPhotoPreview();
  $('#profile').elements.nickname.value=profile?.name||'';
  $('#profile').elements.icon.value=profile?.icon||'🦊';
  $('#member-status').textContent=(profile?.participant_id?'Rodízio: você já pode enviar compras. ':'Rodízio: aguardando vínculo a uma vaga. ')+(mayComment()?'Gazeta: comentários autorizados.':'Gazeta: aguardando autorização para comentar.');
@@ -409,3 +409,34 @@ $('#history-reset').onclick=()=>action(async()=>{
  catch(e){if(e.message.includes('coffee_history_reset')&&/schema cache|Could not find/.test(e.message))throw Error('O reset ainda precisa ser ativado: execute supabase/015_history_reset.sql no SQL Editor.');throw e;}
  pending=null;await load();status('Histórico de abastecimento zerado. Cotas e produtividade também. A cafeteira segue trabalhando.');
 });
+
+function renderCupRankingProfiles() {
+  const root = $('#cup-ranking-profiles');
+  root.replaceChildren();
+  if (!data?.admin) return;
+
+  for (const profile of account?.profiles || []) {
+    const row = el('article', undefined, 'author-profile');
+    row.dataset.userId = profile.user_id;
+    const info = el('div');
+    const enabled = profile.cup_ranking_enabled === true;
+    const mayComment = profile.is_admin || profile.comments_approved;
+    let description = 'Fora do ranking';
+    if (enabled) description = mayComment ? 'Participando do ranking' : 'Incluído · aguardando autorização para comentar';
+    info.append(personLabel(profile.icon, profile.name, profile.photo), el('small', description));
+
+    const button = el('button', enabled ? 'Retirar do ranking' : 'Incluir no ranking');
+    button.type = 'button';
+    button.onclick = () => action(async () => {
+      await request('/rest/v1/rpc/coffee_cup_ranking_set', {
+        p_user: profile.user_id,
+        p_enabled: !enabled
+      });
+      await load();
+      status(enabled ? 'Perfil retirado do ranking. O consumo registrado ficou guardado.' : 'Perfil incluído no ranking da cafeína.');
+    });
+    row.append(info, button);
+    root.append(row);
+  }
+  if (!root.children.length) root.append(el('p', 'Os perfis cadastrados aparecem aqui.'));
+}

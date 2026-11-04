@@ -13,6 +13,15 @@ test('placar em PostgreSQL: permissão, totais, média, idempotência e correç�
  await db.query('insert into coffee_private.admins values($1)',[admin]);await db.query('insert into coffee_private.comment_permissions(user_id) values($1),($2)',[ana,bia]);await db.query('insert into coffee_private.authors(user_id) values($1)',[blocked]);
  const dates=(await db.query("select timezone('America/Sao_Paulo',now())::date::text as today,date_trunc('week',timezone('America/Sao_Paulo',now()))::date::text as monday,(timezone('America/Sao_Paulo',now())::date-1)::text as yesterday")).rows[0];
  await db.query("insert into coffee_private.cup_days values($1,$2::date,3),($1,date_trunc('week',$2::date)::date-1,10),($1,$2::date-20,5),($3,$2::date,5)",[ana,dates.today,bia]);
+ await db.exec(await readFile(new URL('../supabase/019_cup_ranking_members.sql',import.meta.url),'utf8'));
+ await as(ana);await assert.rejects(db.query('select public.coffee_cup_ranking_set($1,false)',[bia]),/exclusivo do administrador/);
+ await as(admin);await db.query('select public.coffee_cup_ranking_set($1,false)',[ana]);
+ await db.exec('reset role');await db.exec(await readFile(new URL('../supabase/019_cup_ranking_members.sql',import.meta.url),'utf8'));
+ await as(ana);assert.equal((await read()).ranking_enabled,false);assert.equal((await read()).can_log,false);assert.equal((await read()).ranking.some(p=>p.name==='Ana'),false);await assert.rejects(adjust(id(),1,dates.today),/incluir você no ranking/);
+ assert.equal((await db.query('select public.coffee_account() as account')).rows[0].account.can_comment,true);
+ await as(admin);await db.query('select public.coffee_cup_ranking_set($1,true)',[ana]);await db.query('select public.coffee_cup_ranking_set($1,true)',[blocked]);
+ await db.exec('reset role');const newcomer='10000000-0000-0000-0000-000000000005';await db.query('insert into auth.users values($1,$2)',[newcomer,{name:'Novo perfil'}]);await db.query('insert into coffee_private.comment_permissions(user_id) values($1)',[newcomer]);await db.exec(await readFile(new URL('../supabase/019_cup_ranking_members.sql',import.meta.url),'utf8'));
+ await as(newcomer);assert.equal((await read()).can_log,false);assert.equal((await read()).ranking_enabled,false);
  await as(null,'anon');const publicData=await read();assert.equal(publicData.day,dates.today);assert.equal(publicData.week_start,dates.monday);assert.equal(publicData.can_log,false);assert.equal(publicData.account_id,null);assert.equal(publicData.ranking.length,3);assert.equal(publicData.ranking[0].name,'Bia');assert.equal(publicData.ranking.some(p=>'user_id' in p),false);
  const score=publicData.ranking.find(p=>p.name==='Ana');assert.deepEqual([score.today,score.week,score.total,score.liters,score.average],[3,3,18,2.7,.86]);
  await assert.rejects(adjust(id(),1,dates.today),/permission denied/);await assert.rejects(db.query('select * from coffee_private.cup_days'),/permission denied/);

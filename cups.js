@@ -20,7 +20,14 @@ function clearPending(){try{if(pending)sessionStorage.removeItem(pendingKey(pend
 function syncControls(){
  const allowed=Boolean(data?.can_log&&hasSession());$('#cup-form').hidden=!allowed;$('#cup-own').hidden=!allowed;$('#cup-guest').hidden=hasSession();$('#cup-logout').hidden=!hasSession();
  if(hasSession()){$('#cup-login').hidden=true;$('#cup-login-toggle').setAttribute('aria-expanded','false');}
- $('#cup-access').textContent=allowed?'Sua xícara, sua responsabilidade estatística.':hasSession()?'Para registrar café, o administrador precisa autorizar seus comentários na Gazeta.':'Entre na sua conta. Só quem tem autorização para comentar na Gazeta pode registrar café.';
+ let accessMessage = 'Entre na sua conta. O administrador libera a participação no ranking e os comentários na Gazeta.';
+ if (hasSession()) {
+   accessMessage = data?.ranking_enabled === false
+     ? 'Você está fora do ranking da cafeína. Peça ao administrador para incluir seu perfil.'
+     : 'Para registrar café, o administrador precisa autorizar seus comentários na Gazeta.';
+ }
+ if (allowed) accessMessage = 'Sua xícara, sua responsabilidade estatística.';
+ $('#cup-access').textContent = accessMessage;
  $('#cup-pending').hidden=!allowed||!pending;$('#cup-retry').hidden=!allowed||!pending;if(pending)$('#cup-pending').textContent='Registro sem confirmação: '+(pending.delta>0?'+':'')+pending.delta+' xícara(s), em '+date(pending.day)+'. Confirme antes de lançar outro.';
  if(data)$('#cup-own').textContent=number(data.own_today)+' xícara(s) hoje · '+number(data.own_today*.15,2)+' L estimados';
  document.querySelectorAll('button').forEach(button=>button.disabled=busy);
