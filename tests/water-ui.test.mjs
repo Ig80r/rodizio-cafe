@@ -17,8 +17,19 @@ test('água no navegador com banco local: inclusão, solicitação, aprovação 
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const base = 'http://127.0.0.1:' + server.address().port;
+    const profilePhoto = await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 40; canvas.height = 40;
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#7bb4cb'; context.fillRect(0, 0, 40, 40);
+      return canvas.toDataURL('image/jpeg');
+    });
+    await db.query('UPDATE coffee_private.profiles SET photo=$1 WHERE user_id=$2', [profilePhoto, USERS.livia.id]);
     await page.goto(base + '/agua.html');
     await page.locator('#water-next').filter({hasText: USERS.livia.name}).waitFor();
+    assert.equal(await page.locator('#water-next .avatar.profile-picture').getAttribute('src'), profilePhoto);
+    assert.equal(await page.locator('#water-queue .person').first().locator(':scope > .avatar.profile-picture').getAttribute('src'), profilePhoto);
+    assert.equal(await page.locator('#water-queue .person').nth(1).locator(':scope > .avatar').getAttribute('src'), './assets/carcara.svg');
     assert.equal(await page.locator('#water-admin').isVisible(), false);
     await page.locator('[data-demo-user=bia]').click();
     await page.locator('#water-access').filter({hasText: 'incluir seu perfil'}).waitFor();

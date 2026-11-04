@@ -354,3 +354,10 @@ body[data-page=cups] header nav{flex-wrap:wrap;justify-content:flex-end}.cups-he
   .water-heading > img { flex-shrink: 0; }
   .water-heading h1 { font-size: clamp(36px, 10vw, 46px); overflow-wrap: anywhere; }
 }
+
+#water-next { display: flex; align-items: center; gap: 12px; }
+#water-next .avatar { width: 56px; height: 56px; flex-shrink: 0; margin: 0; }
+#water-next > span { min-width: 0; overflow-wrap: anywhere; }
+.water-hero > div { min-width: 0; }
+.water-main .avatar.profile-picture { border-color: #8cb8c5; }
+@media(max-width:750px) { #water-next .avatar { width: 42px; height: 42px; } }

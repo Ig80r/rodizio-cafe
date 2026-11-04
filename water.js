@@ -18,16 +18,26 @@ function element(tag, text, className) {
   return item;
 }
 
-function person(profile) {
-  const name = element('b', undefined, 'person-label');
+function profileAvatar(profile) {
   const image = element('img', undefined, 'avatar');
   image.alt = '';
-  image.width = 36;
-  image.height = 36;
+  image.width = 42;
+  image.height = 42;
   const fallback = './assets/' + (sprites[profile.icon] || 'cup') + '.svg';
-  image.src = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(profile.photo || '') ? profile.photo : fallback;
-  image.onerror = () => { image.onerror = null; image.src = fallback; };
-  name.append(image, element('span', profile.name));
+  const hasPhoto = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(profile.photo || '');
+  image.src = hasPhoto ? profile.photo : fallback;
+  image.classList.toggle('profile-picture', hasPhoto);
+  image.onerror = () => {
+    image.onerror = null;
+    image.src = fallback;
+    image.classList.remove('profile-picture');
+  };
+  return image;
+}
+
+function person(profile) {
+  const name = element('b', undefined, 'person-label');
+  name.append(profileAvatar(profile), element('span', profile.name));
   return name;
 }
 
@@ -104,13 +114,13 @@ function renderQueue() {
   const root = $('#water-queue');
   root.replaceChildren();
   const next = data.queue[0];
-  $('#water-next').textContent = next?.name || 'Quem inaugura o garrafão?';
+  $('#water-next').replaceChildren(...(next ? [profileAvatar(next), element('span', next.name)] : [element('span', 'Quem inaugura o garrafão?')]));
   $('#water-people').textContent = data.queue.length;
   $('#water-bottles').textContent = Number(data.bottles).toLocaleString('pt-BR');
   $('#water-liters').textContent = Number(data.liters).toLocaleString('pt-BR') + ' L';
   for (const [index, profile] of data.queue.entries()) {
     const card = element('article', undefined, 'person');
-    card.append(person(profile), element('small', index === 0 ? 'É sua vez de salvar a hidratação!' : (index + 1) + 'º na fila'));
+    card.append(profileAvatar(profile), element('b', profile.name), element('small', index === 0 ? 'É sua vez de salvar a hidratação!' : (index + 1) + 'º na fila'));
     const ahead = profile.rounds - Math.min(...data.queue.map(item => item.rounds));
     if (ahead > 0) card.append(element('small', ahead + ' rodada(s) coberta(s)', 'water-credit'));
     if (profile.is_me) card.append(element('small', 'Você', 'water-credit'));
