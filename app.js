@@ -61,7 +61,61 @@ function ordered(){return data.state.queue.map(id=>data.state.participants.find(
 function render(){syncDraft();const queue=ordered(),h=data.history;$('#next').replaceChildren(...(queue[0]?[avatar(queue[0].icon,queue[0].photo),el('span',queue[0].name)]:[el('span','Garrafa em modo soneca')]));$('#people').textContent=queue.length;const total=h.reduce((s,x)=>s+x.quotas,0);$('#quotas').textContent=total;$('#weight').textContent=(total*250/1000).toLocaleString('pt-BR')+' kg';$('#queue').replaceChildren();queue.forEach((p,i)=>{const card=el('article',undefined,'person');card.append(avatar(p.icon,p.photo),el('b',p.name),el('small',i===0?'Sua missão, cafeteiro!':`${i+1}º na fila`));appendRoleBadges(card,p);$('#queue').append(card);});if(!queue.length)$('#queue').append(el('p','Nenhum participante ativo.'));
  $('#history').replaceChildren();h.forEach(x=>{const row=el('article',undefined,'history-row'),left=el('div');left.append(personLabel(x.buyer_icon,x.buyer_name),el('small',new Date(x.created_at).toLocaleString('pt-BR')));if(x.note)left.append(el('small',x.note));row.append(left,el('strong',`${x.quotas} × 250 g = ${x.quotas*250} g`));$('#history').append(row);});if(!h.length)$('#history').append(el('p','Nenhum herói por aqui. Quem traz o primeiro pacote?'));
  $('#controls').hidden=!data.admin;$('#login').hidden=Boolean(token);$('#logout').hidden=!token;syncCommentAccess();if(!token){$('#gazette-editor').hidden=true;$('#my-publications').hidden=true;$('#my-author-badge').hidden=true;}renderAccount();renderEditors();preview();}
-function renderEditors(){const root=$('#editors');root.replaceChildren();draft.forEach((p,i)=>{const row=el('div',undefined,'editor');const label=el('label','Nome'),input=el('input');input.value=p.name;input.maxLength=40;input.required=true;input.oninput=()=>p.name=input.value;label.append(input);const il=el('label','Ícone'),select=el('select');[...new Set([...icons,p.icon])].forEach(icon=>{const opt=el('option',iconLabels[icons.indexOf(icon)]||'Café');opt.value=icon;select.append(opt);});select.value=p.icon;select.onchange=()=>p.icon=select.value;il.append(select);const pause=el('button',p.active?'Pausar':'Ativar');pause.onclick=()=>{p.active=!p.active;renderEditors();};const up=el('button','↑');up.setAttribute('aria-label',`Mover ${p.name} para cima`);up.onclick=()=>{if(i){[draft[i-1],draft[i]]=[draft[i],draft[i-1]];renderEditors();}};const remove=el('button','Remover');remove.onclick=()=>{if(confirm(`Remover ${p.name}? O histórico será preservado.`)){draft.splice(i,1);renderEditors();}};row.append(label,il,pause,up,remove);root.append(row);});}
+function renderEditors() {
+  const root = $('#editors');
+  root.replaceChildren();
+  draft.forEach((participant, index) => {
+    const row = el('div', undefined, 'editor');
+    const nameLabel = el('label', 'Nome');
+    const nameInput = el('input');
+    nameInput.value = participant.name;
+    nameInput.maxLength = 40;
+    nameInput.required = true;
+    nameInput.oninput = () => { participant.name = nameInput.value; };
+    nameLabel.append(nameInput);
+
+    const profile = account?.profiles?.find(item => item.participant_id === participant.id);
+    const iconLabel = el('div', undefined, 'editor-icon');
+    if (profile) {
+      iconLabel.append(el('span', 'Ícone do perfil'));
+      const chosenIcon = el('div', undefined, 'editor-profile-icon');
+      chosenIcon.append(avatar(profile.icon, profile.photo), el('small', 'Escolhido pelo usuário'));
+      iconLabel.append(chosenIcon);
+    } else {
+      const label = el('label', 'Ícone');
+      const select = el('select');
+      for (const icon of new Set([...icons, participant.icon])) {
+        const option = el('option', iconLabels[icons.indexOf(icon)] || 'Café');
+        option.value = icon;
+        select.append(option);
+      }
+      select.value = participant.icon;
+      select.onchange = () => { participant.icon = select.value; };
+      label.append(select);
+      iconLabel.append(label);
+    }
+
+    const pause = el('button', participant.active ? 'Pausar' : 'Ativar');
+    pause.onclick = () => { participant.active = !participant.active; renderEditors(); };
+    const up = el('button', '↑');
+    up.setAttribute('aria-label', 'Mover ' + participant.name + ' para cima');
+    up.onclick = () => {
+      if (index > 0) {
+        [draft[index - 1], draft[index]] = [draft[index], draft[index - 1]];
+        renderEditors();
+      }
+    };
+    const remove = el('button', 'Remover');
+    remove.onclick = () => {
+      if (confirm('Remover ' + participant.name + '? O histórico será preservado.')) {
+        draft.splice(index, 1);
+        renderEditors();
+      }
+    };
+    row.append(nameLabel, iconLabel, pause, up, remove);
+    root.append(row);
+  });
+}
 function preview(){
  if(!data)return;
  const quantity=Number($('#purchase').elements.quantity.value),queue=ordered();
