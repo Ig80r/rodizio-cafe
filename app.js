@@ -62,7 +62,22 @@ function render(){syncDraft();const queue=ordered(),h=data.history;$('#next').re
  $('#history').replaceChildren();h.forEach(x=>{const row=el('article',undefined,'history-row'),left=el('div');left.append(personLabel(x.buyer_icon,x.buyer_name),el('small',new Date(x.created_at).toLocaleString('pt-BR')));if(x.note)left.append(el('small',x.note));row.append(left,el('strong',`${x.quotas} × 250 g = ${x.quotas*250} g`));$('#history').append(row);});if(!h.length)$('#history').append(el('p','Nenhum herói por aqui. Quem traz o primeiro pacote?'));
  $('#controls').hidden=!data.admin;$('#login').hidden=Boolean(token);$('#logout').hidden=!token;syncCommentAccess();if(!token){$('#gazette-editor').hidden=true;$('#my-publications').hidden=true;$('#my-author-badge').hidden=true;}renderAccount();renderEditors();preview();}
 function renderEditors(){const root=$('#editors');root.replaceChildren();draft.forEach((p,i)=>{const row=el('div',undefined,'editor');const label=el('label','Nome'),input=el('input');input.value=p.name;input.maxLength=40;input.required=true;input.oninput=()=>p.name=input.value;label.append(input);const il=el('label','Ícone'),select=el('select');[...new Set([...icons,p.icon])].forEach(icon=>{const opt=el('option',iconLabels[icons.indexOf(icon)]||'Café');opt.value=icon;select.append(opt);});select.value=p.icon;select.onchange=()=>p.icon=select.value;il.append(select);const pause=el('button',p.active?'Pausar':'Ativar');pause.onclick=()=>{p.active=!p.active;renderEditors();};const up=el('button','↑');up.setAttribute('aria-label',`Mover ${p.name} para cima`);up.onclick=()=>{if(i){[draft[i-1],draft[i]]=[draft[i],draft[i-1]];renderEditors();}};const remove=el('button','Remover');remove.onclick=()=>{if(confirm(`Remover ${p.name}? O histórico será preservado.`)){draft.splice(i,1);renderEditors();}};row.append(label,il,pause,up,remove);root.append(row);});}
-function preview(){if(!data)return;const n=Number($('#purchase').elements.quantity.value),q=ordered();$('#preview').textContent=Number.isInteger(n)&&n>0&&n<=100&&q.length?`${n} cota(s) = ${n*250} g. Próxima pessoa: ${q[n%q.length].name}.`:'Informe entre 1 e 100 cotas.';}
+function preview(){
+ if(!data)return;
+ const quantity=Number($('#purchase').elements.quantity.value),queue=ordered();
+ const output=$('#preview');
+ if(!queue.length){output.textContent='Adicione um participante ativo à fila.';return;}
+ if(!Number.isInteger(quantity)||quantity<1||quantity>100){output.textContent='Informe entre 1 e 100 cotas.';return;}
+ const rounds=data.state.queue_rounds;
+ if(!rounds){
+  output.textContent=`${quantity} cota(s) = ${quantity*250} g. Próxima pessoa: ${queue[quantity%queue.length].name}.`;
+  return;
+ }
+ const [buyer,next]=queue;
+ const buyerRound=(rounds[buyer.id]??0)+quantity;
+ const upcoming=next&&(rounds[next.id]??0)<=buyerRound?next:buyer;
+ output.textContent=`${quantity} cota(s) = ${quantity*250} g. Próxima pessoa: ${upcoming.name}.`;
+}
 $('#admin-toggle').onclick=()=>showPage(true);
 $('#refresh').onclick=()=>action(load);
 $('#login').onsubmit=e=>{e.preventDefault();action(async()=>{if(!configured)throw Error('Configure o Supabase em config.js primeiro.');const f=e.target;const result=await request('/auth/v1/token?grant_type=password',{email:f.elements.email.value,password:f.elements.password.value});token=result.access_token;rememberSession(result);f.elements.password.value='';authView();await load();status('Bem-vindo ao balcão!');if(returnToComments){returnToComments=false;showPage(false);$('#comment-form textarea').focus();}});};
