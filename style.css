@@ -218,3 +218,74 @@ body[data-page=cups] header nav{flex-wrap:wrap;justify-content:flex-end}.cups-he
 #post-preview .preview-publisher{font:11px/1.5 Georgia,serif;text-align:right;color:#655544;margin:14px 0 0;white-space:normal}
 
 .my-post-row>div:first-child{flex:1}.my-post-row{flex-wrap:wrap}#post-admin-actions{gap:10px;flex-wrap:wrap}#post-cancel-edit{margin:8px 10px 8px 0}#post-edit-notice:not([hidden]){padding:12px;border-left:3px solid #dfb078;background:#44352f}
+
+/* Cabeçalho com logo centralizada e navegação em duas colunas no celular. */
+@media (max-width: 750px) {
+  body > header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    padding: 0 16px 16px;
+  }
+
+  body > header > .brand {
+    align-self: stretch;
+    justify-content: center;
+    width: calc(100% + 32px);
+    min-height: 132px;
+    margin: 0 -16px;
+    border-bottom: 1px solid #a47b55;
+    background: #633b4c url('./assets/logo-skyline.svg') center bottom / 300px 132px repeat-x;
+    image-rendering: pixelated;
+  }
+
+  body > header .brand-logo {
+    width: 180px;
+    max-width: 65vw;
+    border: 0;
+    box-shadow: none;
+  }
+
+  body > header > nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  body > header > nav > a,
+  body > header > nav > button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 48px;
+    margin: 0;
+    padding: 10px 6px;
+    border: 1px solid #71545c;
+    background: #2b2530;
+    box-shadow: none;
+    font: 12px/1.35 'DM Sans', Arial, sans-serif;
+    text-align: center;
+    white-space: normal;
+  }
+
+  body > header > nav > .nav-active {
+    border: 2px solid var(--gold);
+    background: #44332e;
+    color: #f1c68f;
+  }
+
+  body > header > nav > a:hover,
+  body > header > nav > button:hover {
+    background: #443039;
+  }
+
+  body > header #admin-toggle span {
+    margin-left: 6px;
+  }
+
+  body[data-page=recovery] > header > nav {
+    grid-template-columns: 1fr;
+  }
+}
