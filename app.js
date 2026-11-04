@@ -66,15 +66,26 @@ function renderEditors() {
   root.replaceChildren();
   draft.forEach((participant, index) => {
     const row = el('div', undefined, 'editor');
-    const nameLabel = el('label', 'Nome');
-    const nameInput = el('input');
-    nameInput.value = participant.name;
-    nameInput.maxLength = 40;
-    nameInput.required = true;
-    nameInput.oninput = () => { participant.name = nameInput.value; };
-    nameLabel.append(nameInput);
-
     const profile = account?.profiles?.find(item => item.participant_id === participant.id);
+    const nameLabel = el('div', undefined, 'editor-name');
+    if (profile) {
+      nameLabel.append(el('span', 'Nome do perfil'), el('strong', profile.name));
+      const correction = el('button', 'Corrigir nome');
+      correction.type = 'button';
+      correction.setAttribute('aria-label', 'Corrigir nome de ' + profile.name);
+      correction.onclick = () => correctProfileName(profile);
+      nameLabel.append(correction);
+    } else {
+      const label = el('label', 'Nome');
+      const nameInput = el('input');
+      nameInput.value = participant.name;
+      nameInput.maxLength = 40;
+      nameInput.required = true;
+      nameInput.oninput = () => { participant.name = nameInput.value; };
+      label.append(nameInput);
+      nameLabel.append(label);
+    }
+
     const iconLabel = el('div', undefined, 'editor-icon');
     if (profile) {
       iconLabel.append(el('span', 'Ícone do perfil'));
@@ -435,7 +446,8 @@ function renderUserProfiles(){
  const row=el('article',undefined,'user-profile'),info=el('div');row.dataset.userId=profile.user_id;
  info.append(personLabel(profile.icon,profile.name,profile.photo));appendRoleBadges(info,profile);
  info.append(el('small',profile.participant_id?'Vinculado à fila do café':'Sem vaga vinculada'));
- row.append(info);
+ const correction=el('button','Corrigir nome');correction.type='button';correction.setAttribute('aria-label','Corrigir nome de '+profile.name);correction.onclick=()=>correctProfileName(profile);
+ row.append(info,correction);
  if(profile.user_id===account?.profile?.user_id)row.append(el('small','Sua conta · exclusão protegida'));
  else{const button=el('button','Excluir usuário');button.type='button';button.className='delete-user';button.onclick=()=>action(async()=>{
  if(!token||!data?.admin)throw Error('Acesso exclusivo do administrador.');
@@ -493,4 +505,22 @@ function renderCupRankingProfiles() {
     root.append(row);
   }
   if (!root.children.length) root.append(el('p', 'Os perfis cadastrados aparecem aqui.'));
+}
+
+function correctProfileName(profile) {
+  return action(async () => {
+    if (!token || !data?.admin) throw Error('Acesso exclusivo do administrador.');
+    const enteredName = prompt('Corrigir o nome deste perfil. Use esta opção para moderar nomes impróprios.', profile.name);
+    if (enteredName === null) return;
+    const name = enteredName.trim();
+    if (!name || name.length > 40) throw Error('O nome precisa ter de 1 a 40 caracteres.');
+    if (name === profile.name) return;
+    await request('/rest/v1/rpc/coffee_profile_name_set', {
+      p_user: profile.user_id,
+      p_name: name,
+      p_expected_name: profile.name
+    });
+    await load();
+    status('Nome do perfil corrigido.');
+  });
 }

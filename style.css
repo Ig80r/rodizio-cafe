@@ -337,3 +337,7 @@ body[data-page=cups] header nav{flex-wrap:wrap;justify-content:flex-end}.cups-he
 .editor-profile-icon { display: flex; align-items: center; gap: 8px; min-height: 46px; margin-top: 7px; }
 .editor-profile-icon .avatar { width: 30px; height: 30px; flex-shrink: 0; }
 .editor-profile-icon small { font-size: 10px; line-height: 1.4; color: var(--muted); }
+
+.editor-name > span { display: block; font-size: 12px; color: var(--muted); }
+.editor-name > strong { display: block; margin-top: 7px; font-size: 14px; overflow-wrap: anywhere; }
+.editor-name > button { margin-top: 8px; padding: 5px 8px; font-size: 10px; }
